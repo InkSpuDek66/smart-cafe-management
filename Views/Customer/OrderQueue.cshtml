@@ -1,0 +1,136 @@
+@* Views/Customer/OrderQueue.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงคิวออเดอร์ทั้งหมดของร้านวันนี้
+- ลูกค้าสามารถตรวจสอบลำดับและสถานะออเดอร์ของตนเองได้
+- ไฮไลต์ออเดอร์ที่ตรงกับโต๊ะของลูกค้า
+- URL เข้าถึง: /Customer/OrderQueue
+- Method: GET
+- Controller Action: CustomerController.OrderQueue (GET)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "คิวออเดอร์";
+    Layout = "_MobileLayout";
+    var queueRows   = ViewBag.QueueRows as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var tableNumber = ViewBag.TableNumber as string;
+
+    // สถานะ → สี badge DaisyUI
+    string StatusBadgeClass(int statusId) => statusId switch
+    {
+        2 => "badge-info",
+        3 => "badge-warning",
+        4 => "badge-success",
+        5 => "badge-neutral",
+        _ => "badge-ghost"
+    };
+    string StatusIcon(int statusId) => statusId switch
+    {
+        2 => "ยืนยันแล้ว",
+        3 => "กำลังทำ",
+        4 => "พร้อมรับ",
+        5 => "เสร็จแล้ว",
+        _ => "?"
+    };
+}
+
+<div class="px-4 pt-3 pb-2">
+    <h1 class="font-bold text-[1.1rem] text-[#3E2723]">คิวออเดอร์วันนี้</h1>
+    @if (!string.IsNullOrEmpty(tableNumber))
+    {
+        <p class="text-[0.75rem] text-gray-400 mt-0.5">โต๊ะของคุณ: <strong class="text-[#6F4E37]">@tableNumber</strong> — ออเดอร์ที่ไฮไลต์คือของคุณ</p>
+    }
+    else
+    {
+        <p class="text-[0.75rem] text-gray-400 mt-0.5">สแกน QR โต๊ะก่อนเพื่อดูคิวของคุณ</p>
+    }
+</div>
+
+@if (!queueRows.Any())
+{
+    <div class="flex flex-col items-center justify-center py-16 px-6 text-gray-400">
+        <!-- Queue empty icon -->
+        <svg class="w-14 h-14 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+        <p class="text-[0.9rem] font-semibold">ยังไม่มีคิวออเดอร์ในขณะนี้</p>
+        <p class="text-[0.75rem] mt-1">ออเดอร์จะปรากฎเมื่อชำระเงินแล้ว</p>
+    </div>
+}
+else
+{
+    <!-- Legend สถานะ -->
+    <div class="flex gap-2 flex-wrap px-4 pb-3">
+        <span class="badge badge-info text-[0.65rem] font-bold">ยืนยันแล้ว</span>
+        <span class="badge badge-warning text-[0.65rem] font-bold">กำลังทำ</span>
+        <span class="badge badge-success text-[0.65rem] font-bold">พร้อมรับ</span>
+        <span class="badge badge-neutral text-[0.65rem] font-bold">เสร็จแล้ว</span>
+    </div>
+
+    <div class="px-4 flex flex-col gap-2 pb-4">
+        @foreach (var row in queueRows)
+        {
+            bool isMyTable  = (bool)row.IsMyTable;
+            int  statusId   = (int)(row.OrderStatusId ?? 0);
+            bool isReady    = statusId == 4;
+            bool isDone     = statusId == 5;
+
+            <div class="rounded-xl border-[1.5px] px-4 py-3 flex items-center gap-3 @(isMyTable ? "border-amber-400 bg-amber-50" : "border-gray-100 bg-white") @(isReady ? "shadow-md" : "")">
+
+                <!-- หมายเลขคิว -->
+                <div class="text-center min-w-[52px]">
+                    <div class="font-['Inter'] text-[1.8rem] font-bold leading-none tracking-tight
+                                @(isReady ? "text-green-600" : isDone ? "text-gray-300" : "text-[#6F4E37]")">
+                        @row.QueueNumber
+                    </div>
+                    @if (isMyTable)
+                    {
+                        <div class="text-[0.6rem] font-bold text-amber-600 mt-0.5">ของคุณ</div>
+                    }
+                </div>
+
+                <!-- ข้อมูล -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="badge @StatusBadgeClass(statusId) text-[0.65rem] font-bold">@StatusIcon(statusId)</span>
+                        @if (isReady)
+                        {
+                            <!-- แสดง pulse เมื่อพร้อมรับ -->
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-ping flex-shrink-0"></span>
+                        }
+                    </div>
+                    <div class="text-[0.78rem] text-gray-500 mt-0.5">
+                        โต๊ะ @row.TableNumber
+                        <span class="text-gray-300 mx-1">·</span>
+                        @(((DateTime?)row.CreatedAt)?.ToString("HH:mm"))
+                    </div>
+                </div>
+
+                <!-- ไอคอนสถานะ -->
+                @if (isReady)
+                {
+                    <div class="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <!-- Check icon — Heroicons -->
+                        <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                }
+                else if (statusId == 3)
+                {
+                    <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                        <!-- Loading dots -->
+                        <svg class="w-5 h-5 text-amber-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+<!-- Auto-refresh ทุก 10 วินาที -->
+<script>
+    setTimeout(function () { location.reload(); }, 10000);
+</script>

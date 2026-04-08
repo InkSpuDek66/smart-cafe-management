@@ -1,0 +1,20 @@
+@* Views/Account/UpdateMember.cshtml *@
+@* ------------------------------------------------
+- หน้าสำหรับอัปเดตข้อมูลสมาชิก (สำหรับ Staff และ Admin)
+- ฟอร์มกรอกข้อมูล: ชื่อ, นามสกุล, เบอร์โทรศัพท์, วันเกิด
+- แสดงข้อความผิดพลาดหรือสำเร็จหลังบันทึก
+- หลังบันทึกสำเร็จให้แสดงข้อความ "อัปเดตข้อมูลสมาชิกสำเร็จ"
+- ใช้ Layout เดียวกับหน้าอื่นๆ ใน Account (เช่น Register, Login) เพื่อความสอดคล้อง
+- URL เข้าถึง: /Account/UpdateMember/{memberId}
+- Method: GET (แสดงฟอร์ม), POST (บันทึกข้อมูล)
+- ViewModel: MemberViewModel (มี properties: MemberId, FirstName, LastName, Phone, BirthDate)
+- Controller Action: AccountController.UpdateMember (GET/POST)
+------------------------------------------------ *@
+
+@{
+    Layout = "_CafeLayout";
+}
+
+@section Scripts {
+    <script>window.location.replace("/Account/MemberList");</script>
+}

@@ -1,0 +1,265 @@
+@* Views/Admin/Index.cshtml *@
+@* ------------------------------------------------
+- หน้า Dashboard สำหรับ Admin
+- ฟีเจอร์หลัก:
+  - แสดงสถิติสำคัญ (ออเดอร์วันนี้, รายได้วันนี้, สมาชิก, สลิปรอ Verify)
+  - แสดงรายการออเดอร์ล่าสุด
+- URL เข้าถึง: /Admin
+- Method: GET
+- ViewModel: Project_CSI402_T2_Y3.ViewModels.DashboardViewModel
+- Controller Action: AdminController.Index (GET)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_AdminLayout";
+    var recentOrders     = ViewBag.RecentOrders as List<Project_CSI402_T2_Y3.ViewModels.AdminOrderRowViewModel> ?? new();
+    var hourlySalesToday = ViewBag.HourlySalesToday as IEnumerable<dynamic>;
+    ViewBag.PendingPaymentCount = ViewBag.PendingPaymentCount ?? 0;
+}
+
+<!-- Stat Cards -->
+<div class="grid gap-4 mb-6 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+
+    <div class="stat-card">
+        <div class="stat-icon bg-amber-100">
+            <svg fill="none" viewBox="0 0 24 24" stroke="#92400e" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+        </div>
+        <div>
+            <div class="stat-label">ออเดอร์วันนี้</div>
+            <div class="stat-value">@Model.TodayOrderCount</div>
+            <div class="stat-desc">รายการ</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon bg-emerald-100">
+            <svg fill="none" viewBox="0 0 24 24" stroke="#065f46" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="stat-label">รายได้วันนี้</div>
+            <div class="stat-value">@Model.TodayRevenue.ToString("N0")</div>
+            <div class="stat-desc">บาท</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon bg-violet-100">
+            <!-- Heroicons outline: users (ครบ 2 path — body + head circles) -->
+            <svg fill="none" viewBox="0 0 24 24" stroke="#5b21b6" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="stat-label">สมาชิก</div>
+            <div class="stat-value">@Model.TotalMembers</div>
+            <div class="stat-desc">คน</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon bg-red-100">
+            <svg fill="none" viewBox="0 0 24 24" stroke="#991b1b" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="stat-label">สลิปรอตรวจสอบ</div>
+            <div class="stat-value">@((int)(ViewBag.PendingPaymentCount ?? 0))</div>
+            <div class="stat-desc">รายการ</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon bg-red-50">
+            <svg fill="none" viewBox="0 0 24 24" stroke="#dc2626" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </div>
+        <div>
+            <div class="stat-label">ของเสียวันนี้</div>
+            <div class="stat-value text-red-600">฿@Model.TodayWastageCost.ToString("N0")</div>
+            <div class="stat-desc">ต้นทุนสูญเสีย</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid gap-4 [grid-template-columns:2fr_1fr]">
+
+    <!-- ออเดอร์ล่าสุด -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            ออเดอร์ล่าสุด
+            <a asp-controller="Admin" asp-action="Orders"
+               class="text-xs text-white/70 no-underline">ดูทั้งหมด →</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="admin-table w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>โต๊ะ</th>
+                        <th>ลูกค้า</th>
+                        <th>คิว</th>
+                        <th>ยอด</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in recentOrders)
+                    {
+                        <tr>
+                            <td class="text-gray-400 text-xs">@o.OrderId</td>
+                            <td class="font-semibold">@(o.TableNumber ?? "—")</td>
+                            <td>@(o.CustomerName ?? "แขก")</td>
+                            <td class="font-bold text-[#6F4E37]">@(o.QueueNumber ?? "—")</td>
+                            <td class="font-bold">฿@o.NetAmount.ToString("N0")</td>
+                            <td>
+                                <span class="status-badge @o.StatusBadgeClass">@o.StatusNameTh</span>
+                            </td>
+                        </tr>
+                    }
+                    @if (!recentOrders.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-gray-400 py-8">ยังไม่มีออเดอร์</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Top 5 Best Sellers วันนี้ + Wastage -->
+    <div class="flex flex-col gap-4">
+
+        <div class="admin-card self-start">
+            <div class="admin-card-header">Top 5 เมนูขายดีวันนี้</div>
+            <div class="admin-card-body p-0">
+                @if (!Model.Top5BestSellers.Any())
+                {
+                    <div class="px-5 py-6 text-center text-gray-400 text-sm">ยังไม่มีออเดอร์วันนี้</div>
+                }
+                else
+                {
+                    @for (int i = 0; i < Model.Top5BestSellers.Count; i++)
+                    {
+                        var item = Model.Top5BestSellers[i];
+                        <!-- สีตาม Rank: อันดับ 1=ทอง, 2=เงิน, 3=บรอนซ์, อื่นๆ=เทา -->
+                        string rankBg = i == 0 ? "bg-amber-400" : i == 1 ? "bg-gray-400" : i == 2 ? "bg-amber-700" : "bg-gray-500";
+                        <div class="px-5 py-2 border-b border-gray-100 flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-white @rankBg w-5 h-5 rounded-full inline-flex items-center justify-center">
+                                    @(i + 1)
+                                </span>
+                                <span class="text-sm font-semibold text-[#3E2723]">@item.MenuName</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs font-bold text-[#6F4E37]">@item.Quantity ชิ้น</div>
+                                <div class="text-xs text-gray-400">฿@item.Revenue.ToString("N0")</div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- Low Stock Alerts -->
+        <div class="admin-card self-start">
+            <div class="admin-card-header">สต็อกใกล้หมด</div>
+            <div class="admin-card-body p-0">
+                @if (Model.LowStockAlerts.Any())
+                {
+                    @foreach (var alert in Model.LowStockAlerts)
+                    {
+                        <div class="px-5 py-3 border-b border-gray-100 flex justify-between items-center">
+                            <div>
+                                <div class="text-sm font-semibold text-[#3E2723]">@alert.IngredientName</div>
+                                <div class="text-xs text-gray-400">เหลือ @alert.StockQuantity @alert.Unit</div>
+                            </div>
+                            <span class="status-badge badge-error">ต่ำกว่า @alert.ReorderLevel</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="px-5 py-6 text-center text-gray-400 text-sm">สต็อกปกติทุกรายการ</div>
+                }
+            </div>
+        </div>
+
+    </div> @* ปิด flex column ของ Top5 + LowStock *@
+</div>
+
+<!-- ยอดขายรายชั่วโมงของวันนี้ -->
+<div class="admin-card mt-5">
+    <div class="admin-card-header">ยอดขายรายชั่วโมงวันนี้</div>
+    <div class="admin-card-body p-0">
+        @if (hourlySalesToday == null || !hourlySalesToday.Any())
+        {
+            <div class="px-5 py-6 text-center text-gray-400 text-sm">
+                ยังไม่มีออเดอร์วันนี้
+            </div>
+        }
+        else
+        {
+            <table class="w-full border-collapse text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b-2 border-gray-200">
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">ชั่วโมง</th>
+                        <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">ออเดอร์</th>
+                        <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">รายได้ (฿)</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">กราฟ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        // หาค่าสูงสุดสำหรับคำนวณ Bar width
+                        decimal maxRevenue = hourlySalesToday.Max(r => (decimal)r.Revenue);
+                        if (maxRevenue == 0) maxRevenue = 1;
+                    }
+                    @foreach (var row in hourlySalesToday)
+                    {
+                        int barWidth = (int)Math.Round((decimal)row.Revenue / maxRevenue * 100);
+                        <tr class="border-b border-gray-100">
+                            <td class="px-3 py-2 text-gray-700">
+                                @($"{(int)row.Hour:D2}:00")
+                            </td>
+                            <td class="px-3 py-2 text-right text-gray-500">@row.OrderCount</td>
+                            <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                @(((decimal)row.Revenue).ToString("N0"))
+                            </td>
+                            <td class="px-3 py-2 min-w-[120px]">
+                                <div class="bg-gray-200 rounded h-2">
+                                    <div class="bg-[#6F4E37] rounded h-2" style="width:@barWidth%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-gray-200 bg-amber-50">
+                        <td class="px-3 py-2 font-bold">รวมวันนี้</td>
+                        <td class="px-3 py-2 text-right font-bold">
+                            @hourlySalesToday.Sum(r => (int)r.OrderCount)
+                        </td>
+                        <td class="px-3 py-2 text-right font-bold text-green-600">
+                            ฿@hourlySalesToday.Sum(r => (decimal)r.Revenue).ToString("N0")
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+    </div>
+</div>

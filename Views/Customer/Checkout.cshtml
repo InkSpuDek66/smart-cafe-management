@@ -1,0 +1,169 @@
+@* Views/Customer/Checkout.cshtml *@
+@* ------------------------------------------------
+- หน้ายืนยันออเดอร์ (สำหรับลูกค้า)
+- แสดงรายการสินค้าที่เลือกไว้ พร้อมจำนวนและราคารวม
+- ฟอร์มกรอกข้อมูลลูกค้า
+- ปุ่มยืนยันออเดอร์
+- URL เข้าถึง: /Customer/Checkout
+- Method: GET (แสดงหน้า), POST (ยืนยันออเดอร์)
+- ViewModel: CheckoutViewModel (ส่งมาจาก Controller)
+- Controller Action: CustomerController.Checkout (GET/POST)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "ยืนยันออเดอร์";
+    Layout = "_MobileLayout";
+    var cartItems        = ViewBag.CartItems as List<Project_CSI402_T2_Y3.ViewModels.CartItem> ?? new();
+    var totalAmount      = (decimal)(ViewBag.TotalAmount ?? 0);
+    var tableNumber      = ViewBag.TableNumber as string;
+    var pendingFreeItems = ViewBag.PendingFreeItems as List<string> ?? new();
+    ViewBag.CartCount    = cartItems.Sum(i => i.Quantity);
+}
+
+<div class="p-4">
+    <h2 class="font-serif text-[1.25rem] font-bold text-[#3E2723] mb-4">
+        ยืนยันออเดอร์
+    </h2>
+
+    <!-- สรุปรายการ -->
+    <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-4">
+        <div class="bg-[#6F4E37] text-white px-4 py-3 font-bold text-sm">
+            รายการที่สั่ง
+        </div>
+        @foreach (var ci in cartItems)
+        {
+            <div class="flex justify-between px-4 py-3 border-b border-[#f3f4f6]">
+                <div>
+                    <div class="text-sm font-semibold text-[#3E2723]">
+                        @ci.MenuName × @ci.Quantity
+                    </div>
+                    @{
+                        var opts = new List<string?> { ci.Sweetness, ci.MilkType, ci.Size }
+                                     .Where(o => !string.IsNullOrEmpty(o)).ToList();
+                    }
+                    @if (opts.Any())
+                    {
+                        <div class="text-[0.72rem] text-gray-400 mt-px">@string.Join(" · ", opts)</div>
+                    }
+                </div>
+                <div class="font-bold text-[#6F4E37] text-[0.9rem] whitespace-nowrap">
+                    ฿@ci.ItemTotal.ToString("N0")
+                </div>
+            </div>
+        }
+        <!-- แสดงรายการฟรีจากโปรโมชั่น -->
+        @foreach (var freeName in pendingFreeItems)
+        {
+            <div class="flex justify-between px-4 py-2.5 border-b border-[#f3f4f6] bg-green-50">
+                <div>
+                    <div class="text-sm font-semibold text-green-700">
+                        @freeName × 1
+                    </div>
+                    <div class="text-[0.72rem] text-green-600 mt-px">รายการโปรโมชั่น (ฟรี)</div>
+                </div>
+                <div class="font-bold text-green-600 text-[0.9rem]">฿0</div>
+            </div>
+        }
+
+        <div class="flex justify-between px-4 py-3.5 font-bold text-base text-[#3E2723]">
+            <span>ยอดรวม</span>
+            <span class="font-serif text-[#6F4E37] text-[1.2rem]">฿@totalAmount.ToString("N0")</span>
+        </div>
+    </div>
+
+    <!-- ฟอร์มข้อมูลลูกค้า -->
+    <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-4">
+        <div class="bg-[#6F4E37] text-white px-4 py-3 font-bold text-sm">
+            ข้อมูลผู้สั่ง
+        </div>
+        <form asp-action="PlaceOrder" asp-controller="Customer" method="post" class="p-4">
+
+            @if (!string.IsNullOrEmpty(tableNumber))
+            {
+                <div class="flex items-center gap-2 px-3 py-2 bg-[#FDF6EC] rounded-lg mb-3.5">
+                    <svg class="w-4 h-4 text-[#8D6748] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-[#3E2723]">โต๊ะ @tableNumber</span>
+                </div>
+            }
+
+            <!-- ชื่อ (สำหรับ Guest) -->
+            <div class="mb-3.5">
+                <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1.5">
+                    ชื่อสำหรับเรียก (ไม่บังคับ)
+                </label>
+                <input type="text" name="guestName" placeholder="เช่น คุณสมชาย"
+                       class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+            </div>
+
+            <!-- เบอร์สมาชิก + AJAX Lookup -->
+            <div class="mb-3.5">
+                <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1.5">
+                    เบอร์โทรสมาชิก (เพื่อรับแต้ม)
+                </label>
+                <input type="tel" id="memberPhoneInput" name="memberPhone" placeholder="เช่น 0891234567"
+                       autocomplete="tel"
+                       class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                <div class="text-[0.7rem] text-gray-400 mt-0.5">ใส่เบอร์มือถือที่สมัครสมาชิก เพื่อสะสมแต้ม 10 บาท = 1 แต้ม</div>
+
+                <!-- ผลลัพธ์การค้นหาสมาชิก -->
+                <div id="memberInfo" class="hidden mt-2"></div>
+            </div>
+
+            <!-- ปุ่มยืนยัน -->
+            <button type="submit"
+                    class="w-full bg-[#6F4E37] text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer mt-1">
+                สั่งซื้อ — ฿@totalAmount.ToString("N0")
+            </button>
+        </form>
+    </div>
+
+    <!-- ย้อนกลับ -->
+    <a href="@Url.Action("Cart", "Customer")"
+       class="block text-center text-[#8D6748] text-sm no-underline py-2">
+        กลับไปแก้ไขตะกร้า
+    </a>
+</div>
+
+<script>
+    // AJAX ค้นหาสมาชิกเมื่อกรอกเบอร์โทรครบ 10 หลัก
+    (function () {
+        var phoneInput  = document.getElementById('memberPhoneInput');
+        var infoBox     = document.getElementById('memberInfo');
+        var lookupTimer = null;
+
+        phoneInput.addEventListener('input', function () {
+            clearTimeout(lookupTimer);
+            var phone = phoneInput.value.trim();
+            if (phone.length < 10) {
+                infoBox.style.display = 'none';
+                return;
+            }
+            // หน่วงเวลา 500ms ก่อนเรียก API
+            lookupTimer = setTimeout(function () {
+                fetch('/Customer/MemberLookup?phone=' + encodeURIComponent(phone))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.found) {
+                            infoBox.innerHTML =
+                                '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:0.6rem 0.875rem;">' +
+                                '  <div style="font-weight:700;color:#166534;font-size:0.875rem;">' + data.fullName + '</div>' +
+                                '  <div style="font-size:0.75rem;color:#15803d;margin-top:2px;">' +
+                                '    แต้มสะสม: <strong>' + data.points + '</strong> แต้ม' +
+                                '    &nbsp;·&nbsp; Stamp: <strong>' + data.stamps + '</strong> / 10' +
+                                '  </div>' +
+                                '</div>';
+                        } else {
+                            infoBox.innerHTML =
+                                '<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;padding:0.5rem 0.875rem;font-size:0.8rem;color:#991b1b;">' +
+                                '  ไม่พบสมาชิกที่ใช้เบอร์นี้' +
+                                '</div>';
+                        }
+                        infoBox.style.display = 'block';
+                    })
+                    .catch(function () { infoBox.style.display = 'none'; });
+            }, 500);
+        });
+    })();
+</script>

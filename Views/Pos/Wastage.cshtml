@@ -1,0 +1,158 @@
+@* Views/Pos/Wastage.cshtml *@
+@* ------------------------------------------------
+- หน้า Wastage สำหรับบันทึกการเสียวัตถุดิบ (สำหรับ Staff และ Admin)
+- ฟอร์มกรอกข้อมูล: เลือกวัตถุดิบ, ปริมาณที่เสีย
+- แสดงสต็อกปัจจุบันของวัตถุดิบที่เลือกแบบ real-time
+- แสดงประวัติการบันทึก Wastage ล่าสุด 20 รายการ
+- URL เข้าถึง: /Pos/Wastage
+- Method: GET (แสดงฟอร์ม), POST (บันทึกข้อมูล)
+- ViewModel: ไม่มี (ใช้ ViewBag ส่งข้อมูลวัตถุดิบและประวัติ)
+- Controller Action: PosController.Wastage (GET/POST)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "บันทึก Wastage";
+    Layout = "_AdminLayout";
+    var ingredients = ViewBag.Ingredients as List<Project_CSI402_T2_Y3.ViewModels.PosWastageViewModel>;
+    var recentLogs  = ViewBag.RecentLogs as IEnumerable<dynamic>;
+}
+
+<div class="max-w-[900px]">
+
+    <!-- ปุ่มกลับ -->
+    <a asp-controller="Pos" asp-action="Queue"
+       class="inline-flex items-center gap-1 text-[#6F4E37] text-sm font-bold no-underline mb-4">
+        ← กลับ Queue
+    </a>
+
+
+    <div class="grid grid-cols-[1fr_1.5fr] gap-6 items-start">
+
+        <!-- ===== ฟอร์มบันทึก Wastage ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">บันทึก Wastage</div>
+            <div class="admin-card-body">
+                <form asp-controller="Pos" asp-action="Wastage" method="post">
+
+                    <!-- เลือกวัตถุดิบ -->
+                    <div class="mb-4">
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1.5">
+                            วัตถุดิบ *
+                        </label>
+                        <select name="ingredientId" id="ingredientSelect" required onchange="updateStock(this)"
+                                class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2.5 text-sm bg-[#fefaf6] outline-none">
+                            <option value="">-- เลือกวัตถุดิบ --</option>
+                            @if (ingredients != null)
+                            {
+                                @foreach (var ing in ingredients)
+                                {
+                                    <option value="@ing.IngredientId"
+                                            data-stock="@ing.StockQuantity"
+                                            data-unit="@ing.Unit">
+                                        @ing.IngredientName (@ing.StockQuantity?.ToString("N2") @ing.Unit)
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- สต็อกปัจจุบัน (แสดง real-time เมื่อเลือก) -->
+                    <div id="stockInfo" class="hidden mb-4 bg-amber-50 rounded-md px-3 py-2 text-[0.82rem]">
+                        สต็อกปัจจุบัน: <strong id="stockVal">—</strong>
+                    </div>
+
+                    <!-- ปริมาณที่เสีย -->
+                    <div class="mb-4">
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1.5">
+                            ปริมาณที่เสีย *
+                        </label>
+                        <div class="flex gap-2 items-center">
+                            <input type="number" name="quantity" id="quantityInput"
+                                   min="0.001" step="0.001" required
+                                   class="flex-1 border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                            <span id="unitLabel" class="text-sm text-gray-500 min-w-[40px]">—</span>
+                        </div>
+                    </div>
+
+                    <!-- หมายเหตุ / สาเหตุ -->
+                    <div class="mb-4">
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1.5">
+                            หมายเหตุ / สาเหตุ
+                        </label>
+                        <textarea name="notes" rows="2" maxlength="500" placeholder="เช่น ของหมดอายุ, ทำหกเลอะ, ..."
+                                  class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2 text-sm bg-[#fefaf6] outline-none resize-none"></textarea>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-amber-400 text-white border-none rounded-lg py-3 text-sm font-bold cursor-pointer">
+                        บันทึก Wastage
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===== ประวัติ Wastage ล่าสุด ===== -->
+        <div class="admin-card">
+            <div class="admin-card-header">ประวัติ Wastage (20 รายการล่าสุด)</div>
+            <div class="admin-card-body p-0">
+                @if (recentLogs == null || !recentLogs.Any())
+                {
+                    <div class="p-6 text-center text-gray-400 text-sm">
+                        ยังไม่มีประวัติ Wastage
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-zebra w-full text-[0.82rem]">
+                        <thead>
+                            <tr>
+                                <th class="text-gray-500 text-[0.72rem] uppercase">วัตถุดิบ</th>
+                                <th class="text-right text-gray-500 text-[0.72rem] uppercase">ปริมาณ</th>
+                                <th class="text-gray-500 text-[0.72rem] uppercase">หมายเหตุ</th>
+                                <th class="text-gray-500 text-[0.72rem] uppercase">โดย</th>
+                                <th class="text-gray-500 text-[0.72rem] uppercase">เวลา</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in recentLogs)
+                            {
+                                <tr>
+                                    <td class="text-gray-800">@log.IngredientName</td>
+                                    <td class="text-right text-red-600 font-bold">
+                                        @(Math.Abs((float)log.QuantityChange).ToString("N2"))
+                                    </td>
+                                    <td class="text-gray-400 text-[0.78rem] max-w-[120px] truncate" title="@log.Notes">
+                                        @(string.IsNullOrEmpty((string?)log.Notes) ? "—" : log.Notes)
+                                    </td>
+                                    <td class="text-gray-500">@log.CreatedBy</td>
+                                    <td class="text-gray-500">
+                                        @(((DateTime?)log.CreatedAt)?.ToString("dd/MM HH:mm"))
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // แสดงสต็อกปัจจุบันและ Unit เมื่อเลือกวัตถุดิบ
+    function updateStock(select) {
+        var opt = select.options[select.selectedIndex];
+        var stock = opt.getAttribute('data-stock');
+        var unit  = opt.getAttribute('data-unit');
+
+        if (stock && unit) {
+            document.getElementById('stockVal').textContent = parseFloat(stock).toFixed(3) + ' ' + unit;
+            document.getElementById('stockInfo').style.display = 'block';
+            document.getElementById('unitLabel').textContent = unit;
+        } else {
+            document.getElementById('stockInfo').style.display = 'none';
+            document.getElementById('unitLabel').textContent = '—';
+        }
+    }
+</script>

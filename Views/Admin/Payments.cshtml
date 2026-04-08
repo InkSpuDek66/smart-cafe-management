@@ -1,0 +1,132 @@
+@* Views/Admin/Payments.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงรายการสลิป (สำหรับ Admin)
+- แสดงข้อมูล: หมายเลขออเดอร์, โต๊ะ, ลูกค้า, รายการ, ยอด, คิว, สถานะ, เวลา
+- ปุ่มจัดการ: อัปเดตสถานะ
+- URL เข้าถึง: /Admin/Payments
+- Method: GET (แสดงรายการสลิป)
+- ViewModel: AdminPaymentViewModel
+- Controller Action: AdminController.Payments (GET)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.AdminPaymentViewModel
+@{
+    ViewData["Title"] = "ตรวจสอบสลิป";
+    Layout = "_AdminLayout";
+}
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        รายการสลิปรอตรวจสอบ
+        <span class="text-sm bg-white/20 px-2 py-0.5 rounded-full">
+            @Model.Payments.Count(p => p.PaymentStatusId == 1) รายการรอ
+        </span>
+    </div>
+
+    @if (!Model.Payments.Any())
+    {
+        <div class="p-12 text-center text-gray-400">ไม่มีสลิปรอตรวจสอบ</div>
+    }
+    else
+    {
+        <!-- Pending ก่อน แล้วตามด้วยที่ตรวจแล้ว -->
+        @foreach (var p in Model.Payments.OrderBy(p => p.PaymentStatusId).ThenByDescending(p => p.CreatedAt))
+        {
+            <div class="grid gap-4 px-5 py-5 border-b border-gray-100 items-start [grid-template-columns:140px_1fr_auto]">
+
+                <!-- รูปสลิป -->
+                <div>
+                    @if (!string.IsNullOrEmpty(p.SlipUrl))
+                    {
+                        <a href="@p.SlipUrl" target="_blank">
+                            <img src="@p.SlipUrl" alt="สลิป"
+                                 class="w-[140px] h-[140px] object-cover rounded-lg border border-[#EFE0C9] cursor-zoom-in"
+                                 onerror="this.src='https://placehold.co/140x140/EFE0C9/6F4E37?text=No+Slip'" />
+                        </a>
+                        <div class="text-xs text-gray-400 mt-1 text-center">คลิกเพื่อขยาย</div>
+                    }
+                    else
+                    {
+                        <div class="w-[140px] h-[140px] bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
+                            ไม่มีสลิป
+                        </div>
+                    }
+                </div>
+
+                <!-- รายละเอียด -->
+                <div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="font-bold text-[#3E2723] text-base">ออเดอร์ #@p.OrderId</span>
+                        @{
+                            // กำหนด badge class ตามสถานะ Payment
+                            string badgeCls = p.PaymentStatusId switch
+                            {
+                                1 => "badge badge-warning",
+                                2 => "badge badge-success",
+                                3 => "badge badge-error",
+                                _ => "badge"
+                            };
+                        }
+                        <span class="@badgeCls text-xs font-bold">@p.StatusNameTh</span>
+                    </div>
+
+                    <div class="text-sm text-gray-700 leading-relaxed">
+                        <span class="text-gray-500">โต๊ะ:</span> <strong>@(p.TableNumber ?? "—")</strong>
+                        &nbsp;|&nbsp;
+                        <span class="text-gray-500">ลูกค้า:</span> <strong>@(p.CustomerName ?? "แขก")</strong>
+                        @if (!string.IsNullOrEmpty(p.QueueNumber))
+                        {
+                            <text>&nbsp;|&nbsp;</text>
+                            <span class="text-gray-500">คิว:</span> <strong class="text-[#6F4E37]">@p.QueueNumber</strong>
+                        }
+                    </div>
+                    <div class="text-sm text-gray-700">
+                        <span class="text-gray-500">ช่องทาง:</span> <strong>@p.PaymentMethodName</strong>
+                        &nbsp;|&nbsp;
+                        <span class="text-gray-500">ยอด:</span>
+                        <strong class="font-['Inter'] text-lg text-[#6F4E37]">
+                            ฿@p.Amount.ToString("N0")
+                        </strong>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1">
+                        @p.CreatedAt?.ToString("dd/MM/yyyy HH:mm")
+                    </div>
+                </div>
+
+                <!-- ปุ่ม Approve / Reject -->
+                @if (p.PaymentStatusId == 1)
+                {
+                    <div class="flex flex-col gap-2 min-w-[130px]">
+                        <form asp-controller="Admin" asp-action="ApprovePayment"
+                              asp-route-paymentId="@p.PaymentId" method="post">
+                            <button type="submit" class="btn-cf-primary btn-success w-full py-2 text-sm justify-center">
+                                อนุมัติ
+                            </button>
+                        </form>
+
+                        <!-- Reject พร้อมระบุเหตุผล -->
+                        <form asp-controller="Admin" asp-action="RejectPayment"
+                              asp-route-paymentId="@p.PaymentId" method="post"
+                              onsubmit="return confirm('ปฏิเสธสลิปออเดอร์ #@p.OrderId?')">
+                            <select name="rejectReason"
+                                    class="w-full border border-red-300 rounded-lg px-2 py-1 text-xs bg-red-50 outline-none mb-1">
+                                <option value="สลิปไม่ชัดเจน">สลิปไม่ชัดเจน</option>
+                                <option value="ยอดเงินไม่ตรง">ยอดเงินไม่ตรง</option>
+                                <option value="สลิปซ้ำ">สลิปซ้ำ</option>
+                                <option value="สลิปหมดอายุ">สลิปหมดอายุ</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                            <button type="submit" class="btn-cf-primary btn-danger w-full py-2 text-sm justify-center">
+                                ปฏิเสธ
+                            </button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-gray-400 text-sm text-center">ตรวจแล้ว</div>
+                }
+            </div>
+        }
+    }
+</div>

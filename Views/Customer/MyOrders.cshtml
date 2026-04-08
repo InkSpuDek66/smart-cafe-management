@@ -1,0 +1,200 @@
+@* Views/Customer/MyOrders.cshtml *@
+@* ------------------------------------------------
+- หน้าคิวออเดอร์และประวัติการสั่งซื้อ (สำหรับลูกค้า)
+- Section 1: ออเดอร์ที่กำลังดำเนินการ (Status 1-4) พร้อมหมายเลขคิว
+- Section 2: ประวัติการสั่งซื้อ (Status 5=เสร็จสิ้น, 6=ยกเลิก)
+- สมาชิก: ดูออเดอร์ทั้งหมดของตนเอง
+- Guest: ดูออเดอร์ของโต๊ะเฉพาะวันนี้
+- URL เข้าถึง: /Customer/MyOrders
+- Method: GET
+- Controller Action: CustomerController.MyOrders (GET)
+------------------------------------------------ *@
+
+@using Project_CSI402_T2_Y3.Models.Db
+@{
+    ViewData["Title"] = "ออเดอร์ของฉัน";
+    Layout = "_MobileLayout";
+
+    var activeOrders = ViewBag.ActiveOrders as List<Order> ?? new List<Order>();
+    var statusLabels = ViewBag.StatusLabels as Dictionary<int, string> ?? new Dictionary<int, string>();
+    var orderItems   = ViewBag.OrderItems;
+    var tableNumber  = ViewBag.TableNumber as string;
+
+    // ฟังก์ชันช่วยดึงชื่อสถานะ
+    string GetLabel(int? id) =>
+        statusLabels.TryGetValue(id ?? 0, out var lbl) ? lbl : "ไม่ทราบ";
+}
+
+<div class="p-4 pb-6">
+
+    <!-- ===== Header ===== -->
+    @if (ViewBag.MemberName != null)
+    {
+        <!-- สมาชิก: แสดง Points + Stamps -->
+        <div class="flex items-center gap-3 mb-5 bg-white rounded-xl border border-[#EFE0C9] p-3.5">
+            <div class="w-10 h-10 rounded-full bg-[#6F4E37] flex items-center justify-center flex-shrink-0">
+                <!-- User icon — Heroicons outline -->
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="font-bold text-[0.9rem] text-[#3E2723] truncate">@ViewBag.MemberName</div>
+                <div class="text-[0.72rem] text-[#8D6748] mt-0.5">
+                    @((int)ViewBag.MemberPoints) แต้ม &nbsp;·&nbsp; @((int)ViewBag.MemberStamps) แสตมป์
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="mb-4">
+            <h2 class="font-['Playfair_Display'] text-[1.25rem] font-bold text-[#3E2723]">ออเดอร์ของฉัน</h2>
+            @if (!string.IsNullOrEmpty(tableNumber))
+            {
+                <p class="text-[0.8rem] text-[#8D6748] mt-0.5">โต๊ะ @tableNumber — วันนี้</p>
+            }
+        </div>
+    }
+
+    <!-- ===== Section 1: ออเดอร์ที่กำลังดำเนินการ ===== -->
+    <div class="mb-1">
+        <div class="flex items-center gap-2 mb-3">
+            <!-- Clock icon — Heroicons outline -->
+            <svg class="w-4 h-4 text-[#6F4E37]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="font-bold text-[0.9rem] text-[#3E2723]">ออเดอร์ปัจจุบัน</span>
+            @if (activeOrders.Any())
+            {
+                <span class="badge badge-warning text-[0.65rem] font-bold">@activeOrders.Count</span>
+            }
+        </div>
+
+        @if (!activeOrders.Any())
+        {
+            <div class="bg-white rounded-xl border border-[#EFE0C9] px-4 py-8 text-center mb-5">
+                <!-- Inbox icon — Heroicons outline -->
+                <svg class="w-10 h-10 text-[#C8A97E] mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <p class="text-gray-400 text-sm">ไม่มีออเดอร์ที่กำลังดำเนินการ</p>
+                <a href="@Url.Action("Menu", "Customer")"
+                   class="inline-flex items-center justify-center mt-3 btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
+                    สั่งออเดอร์
+                </a>
+            </div>
+        }
+        else
+        {
+            @foreach (var order in activeOrders)
+            {
+                var sid    = order.OrderStatusId ?? 0;
+                var label  = GetLabel(sid);
+
+                @* สีตาม status *@
+                var (badgeClass, dotColor) = sid switch
+                {
+                    1 => ("badge-warning",  "bg-amber-400"),
+                    2 => ("badge-info",     "bg-blue-400"),
+                    3 => ("badge-secondary","bg-violet-400"),
+                    4 => ("badge-success",  "bg-green-500"),
+                    _ => ("badge-neutral",  "bg-gray-400")
+                };
+
+                @* items ของ order นี้ *@
+                var thisItems = orderItems != null
+                    ? ((IEnumerable<dynamic>)orderItems).Where(i => i.OrderId == order.OrderId).ToList()
+                    : new List<dynamic>();
+
+                <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-3 shadow-sm">
+
+                    <!-- หัว card: คิว + สถานะ -->
+                    <div class="flex items-center justify-between px-4 py-3 bg-[#FDF6EC] border-b border-[#EFE0C9]">
+                        <div class="flex items-center gap-2">
+                            @if (!string.IsNullOrEmpty(order.QueueNumber))
+                            {
+                                <div class="font-['Inter'] text-[1.8rem] font-bold text-[#6F4E37] leading-none tracking-tight">
+                                    @order.QueueNumber
+                                </div>
+                                <div class="text-[0.7rem] text-[#8D6748] leading-tight">
+                                    หมายเลข<br>คิว
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-[0.8rem] font-bold text-[#8D6748]">ออเดอร์ #@order.OrderId</div>
+                            }
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="badge @badgeClass text-[0.68rem] font-bold">@label</span>
+                            <span class="text-[0.68rem] text-gray-400">
+                                @order.CreatedAt?.ToString("HH:mm") น.
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- แสดงข้อความพิเศษสำหรับสถานะ Ready -->
+                    @if (sid == 4)
+                    {
+                        <div class="mx-4 mt-3 px-3 py-2 bg-green-100 rounded-lg text-center">
+                            <div class="font-bold text-green-800 text-sm">เครื่องดื่มพร้อมรับแล้ว!</div>
+                            <div class="text-[0.75rem] text-green-700 mt-0.5">กรุณามารับที่เคาน์เตอร์</div>
+                        </div>
+                    }
+
+                    <!-- รายการสินค้า (สูงสุด 3 รายการ) -->
+                    <div class="px-4 pt-3 pb-1">
+                        @{
+                            int showCount = 0;
+                            foreach (var it in thisItems.Take(3))
+                            {
+                                showCount++;
+                                <div class="flex justify-between text-sm py-1 border-b border-[#f3f4f6] last:border-0">
+                                    <span class="text-[#3E2723]">@it.MenuName × @it.Quantity</span>
+                                    <span class="text-[#6F4E37] font-semibold">
+                                        ฿@((it.UnitPrice * it.Quantity)?.ToString("N0"))
+                                    </span>
+                                </div>
+                            }
+                            if (thisItems.Count > 3)
+                            {
+                                <div class="text-[0.72rem] text-gray-400 py-1">
+                                    + อีก @(thisItems.Count - 3) รายการ
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <!-- footer card: ยอดรวม + ปุ่มดูรายละเอียด -->
+                    <div class="flex items-center justify-between px-4 py-3 border-t border-[#EFE0C9] mt-1">
+                        <div class="font-['Inter'] font-bold text-[#6F4E37] tracking-tight">
+                            ฿@order.NetAmount?.ToString("N0")
+                        </div>
+                        <a href="@Url.Action("Tracking", "Customer", new { orderId = order.OrderId })"
+                           class="btn btn-xs bg-[#6F4E37] text-white border-none font-bold gap-1">
+                            ดูรายละเอียด
+                            <!-- Chevron right icon — Heroicons outline -->
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+
+</div>
+
+@* polling อัปเดตหน้า — ถ้ามีออเดอร์ active อยู่ให้ reload ทุก 15 วินาที *@
+@if (activeOrders.Any())
+{
+    <script>
+        setTimeout(function () { location.reload(); }, 15000);
+    </script>
+}

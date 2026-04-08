@@ -1,0 +1,202 @@
+@* Views/Admin/Recipes.cshtml *@
+@* ------------------------------------------------
+- หน้าจัดการสูตรอาหาร (สำหรับ Admin)
+- แสดงรายการสูตรอาหารที่มีอยู่
+- ปุ่มจัดการ: แก้ไข, ลบ
+- URL เข้าถึง: /Admin/Recipes
+- Method: GET
+- ViewModel: List<Project_CSI402_T2_Y3.Models.Db.Recipe>
+- Controller Action: AdminController.Recipes (GET)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "จัดการสูตรวัตถุดิบ";
+    Layout = "_AdminLayout";
+
+    var menuItems   = ViewBag.MenuItems   as List<Project_CSI402_T2_Y3.Models.Db.Menuitem>;
+    var ingredients = ViewBag.Ingredients as List<Project_CSI402_T2_Y3.Models.Db.Ingredient>;
+    var recipes     = ViewBag.Recipes     as List<Project_CSI402_T2_Y3.Models.Db.Recipe>;
+}
+
+<h1 class="font-['Inter'] text-2xl font-bold text-[#6F4E37] mb-4">
+    จัดการสูตรวัตถุดิบ
+</h1>
+
+
+<div class="grid gap-6 items-start [grid-template-columns:1fr_1.6fr]">
+
+    <!-- ===== ฟอร์มเพิ่มสูตร ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">เพิ่ม / แก้ไขสูตร</div>
+        <div class="admin-card-body">
+            <form asp-controller="Admin" asp-action="AddRecipe" method="post">
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                        เมนู *
+                    </label>
+                    <select name="menuItemId" required id="menuSelect" onchange="filterRecipes(this.value)"
+                            class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none">
+                        <option value="">-- เลือกเมนู --</option>
+                        @if (menuItems != null)
+                        {
+                            @foreach (var m in menuItems)
+                            {
+                                <option value="@m.MenuItemId">@m.MenuName</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                        วัตถุดิบ *
+                    </label>
+                    <select name="ingredientId" required id="ingSelect" onchange="updateUnit(this)"
+                            class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none">
+                        <option value="">-- เลือกวัตถุดิบ --</option>
+                        @if (ingredients != null)
+                        {
+                            @foreach (var ing in ingredients)
+                            {
+                                <option value="@ing.IngredientId" data-unit="@ing.Unit">
+                                    @ing.IngredientName (@ing.Unit)
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                            ปริมาณที่ใช้ *
+                        </label>
+                        <input type="number" name="quantityRequired" min="0.001" step="0.001" required
+                               class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                            หน่วย
+                        </label>
+                        <input type="text" name="unit" id="unitInput" placeholder="จากวัตถุดิบ"
+                               class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="btn btn-sm w-full bg-[#6F4E37] text-white border-none font-bold">
+                    บันทึกสูตร
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== รายการสูตรแยกตามเมนู ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">สูตรวัตถุดิบทั้งหมด</div>
+
+        @if (menuItems == null || !menuItems.Any())
+        {
+            <div class="px-5 py-6 text-center text-gray-400 text-sm">
+                ยังไม่มีเมนูในระบบ
+            </div>
+        }
+        else
+        {
+            // จัดกลุ่ม recipes ตาม MenuItemId
+            var recipeByMenu = (recipes ?? new List<Project_CSI402_T2_Y3.Models.Db.Recipe>())
+                .GroupBy(r => r.MenuItemId ?? 0)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var ingDict = (ingredients ?? new List<Project_CSI402_T2_Y3.Models.Db.Ingredient>())
+                .ToDictionary(i => i.IngredientId, i => i);
+
+            <!-- Filter แสดงเฉพาะเมนูที่เลือก หรือทั้งหมด -->
+            <div class="px-4 py-3 border-b border-gray-100">
+                <span class="text-xs text-gray-500">กรองตามเมนู: </span>
+                <select id="filterMenuSelect" onchange="filterRecipes(this.value)"
+                        class="border border-[#d9c9b6] rounded px-2 py-1 text-sm bg-amber-50 outline-none">
+                    <option value="0">— แสดงทั้งหมด —</option>
+                    @foreach (var m in menuItems)
+                    {
+                        <option value="@m.MenuItemId">@m.MenuName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="overflow-y-auto max-h-[65vh]">
+                @foreach (var m in menuItems)
+                {
+                    var mRecipes = recipeByMenu.GetValueOrDefault(m.MenuItemId, new());
+                    <div class="menu-recipe-group border-b-2 border-gray-100" data-menu="@m.MenuItemId">
+                        <div class="px-4 py-2 bg-amber-50 flex items-center justify-between">
+                            <span class="font-bold text-sm text-[#3E2723]">@m.MenuName</span>
+                            <span class="text-xs text-gray-400">@mRecipes.Count วัตถุดิบ</span>
+                        </div>
+
+                        @if (!mRecipes.Any())
+                        {
+                            <div class="px-4 py-2 text-xs text-gray-400">
+                                ยังไม่มีสูตร
+                            </div>
+                        }
+                        else
+                        {
+                            <table class="w-full border-collapse text-sm">
+                                <tbody>
+                                    @foreach (var r in mRecipes)
+                                    {
+                                        var ing = ingDict.GetValueOrDefault(r.IngredientId ?? 0);
+                                        <tr class="border-t border-gray-50">
+                                            <td class="px-4 py-1 text-gray-700">
+                                                @(ing?.IngredientName ?? "?")
+                                            </td>
+                                            <td class="px-2 py-1 text-right font-bold text-[#6F4E37]">
+                                                @r.QuantityRequired?.ToString("G4") @r.Unit
+                                            </td>
+                                            <td class="px-3 py-1 text-right">
+                                                <form asp-controller="Admin" asp-action="DeleteRecipe" method="post"
+                                                      class="inline">
+                                                    <input type="hidden" name="recipeId" value="@r.RecipeId" />
+                                                    <button type="submit"
+                                                            onclick="return confirm('ลบสูตรนี้?')"
+                                                            class="btn btn-xs btn-error btn-outline font-bold">
+                                                        ลบ
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+</div>
+
+<script>
+    // กรองรายการสูตรตามเมนูที่เลือก
+    function filterRecipes(menuId) {
+        var id = parseInt(menuId) || 0;
+        document.querySelectorAll('.menu-recipe-group').forEach(function(el) {
+            el.style.display = (!id || parseInt(el.dataset.menu) === id) ? 'block' : 'none';
+        });
+        // sync select ทั้งสอง (ฟอร์มเพิ่ม + filter)
+        var menuSel   = document.getElementById('menuSelect');
+        var filterSel = document.getElementById('filterMenuSelect');
+        if (menuSel && id) menuSel.value = id;
+        if (filterSel) filterSel.value = id;
+    }
+
+    // เติม Unit จากวัตถุดิบที่เลือก
+    function updateUnit(select) {
+        var opt  = select.options[select.selectedIndex];
+        var unit = opt.getAttribute('data-unit') || '';
+        document.getElementById('unitInput').value = unit;
+    }
+</script>

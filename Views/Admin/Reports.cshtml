@@ -1,0 +1,559 @@
+@* Views/Admin/Reports.cshtml *@
+@* ------------------------------------------------
+- หน้ารายงานยอดขาย (สำหรับ Admin)
+- แสดงข้อมูลยอดขายแยกตามวัน, เมนู, ช่วงเวลา และช่องทางการชำระเงิน
+- URL เข้าถึง: /Admin/Reports
+- Method: GET
+- ViewModel: ไม่มี (ใช้ ViewBag ส่งข้อมูลรายงาน)
+- Controller Action: AdminController.Reports (GET)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "รายงานยอดขาย";
+    Layout = "_AdminLayout";
+    var salesByDay       = ViewBag.SalesByDay       as IEnumerable<dynamic>;
+    var salesByMenu      = ViewBag.SalesByMenu      as IEnumerable<dynamic>;
+    var salesByHour      = ViewBag.SalesByHour      as IEnumerable<dynamic>;
+    var salesByWeekday   = ViewBag.SalesByWeekday   as IEnumerable<dynamic>;
+    var salesByMonth     = ViewBag.SalesByMonth     as IEnumerable<dynamic>;
+    var salesByQuarter   = ViewBag.SalesByQuarter   as IEnumerable<dynamic>;
+    var paymentChannels  = ViewBag.PaymentChannels  as IEnumerable<dynamic>;
+    var optionPopularity = ViewBag.OptionPopularity as IEnumerable<dynamic>;
+    var wastageCost      = ViewBag.WastageCost      as IEnumerable<dynamic>;
+    var yoyComparison    = ViewBag.YoyComparison    as IEnumerable<dynamic>;
+}
+
+<h1 class="font-['Inter'] text-[1.4rem] font-bold text-[#6F4E37] mb-4">
+    รายงานยอดขาย
+</h1>
+
+<!-- ฟอร์มกรองช่วงวัน -->
+<form asp-controller="Admin" asp-action="Reports" method="get"
+      class="flex gap-3 items-end mb-5 flex-wrap">
+    <div>
+        <label class="block text-xs font-bold text-[#6F4E37] mb-1">จากวันที่</label>
+        <input type="date" name="from" value="@ViewBag.DateFrom"
+               class="border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-[#fefaf6] outline-none" />
+    </div>
+    <div>
+        <label class="block text-xs font-bold text-[#6F4E37] mb-1">ถึงวันที่</label>
+        <input type="date" name="to" value="@ViewBag.DateTo"
+               class="border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-[#fefaf6] outline-none" />
+    </div>
+    <button type="submit"
+            class="bg-[#6F4E37] text-white border-none rounded-lg px-5 py-2 text-sm font-bold cursor-pointer">
+        กรอง
+    </button>
+</form>
+
+<!-- Summary Cards -->
+<div class="grid gap-4 mb-6 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">ออเดอร์ทั้งหมด</div>
+        <div class="cf-stat-value">@ViewBag.TotalOrders</div>
+        <div class="cf-stat-desc">ในช่วงที่เลือก</div>
+    </div>
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">รายได้รวม</div>
+        <div class="cf-stat-value">฿@(((decimal)ViewBag.TotalRevenue).ToString("N0"))</div>
+        <div class="cf-stat-desc">Net Amount</div>
+    </div>
+</div>
+
+<div class="grid gap-6 items-start [grid-template-columns:1fr_1.2fr]">
+
+    <!-- ===== ยอดขายแยกตามวัน ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">ยอดขายแยกตามวัน</div>
+        <div class="admin-card-body p-0">
+            @if (salesByDay == null || !salesByDay.Any())
+            {
+                <div class="p-6 text-center text-gray-400 text-sm">ไม่มีข้อมูล</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">วันที่</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">ออเดอร์</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">รายได้ (฿)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in salesByDay)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700">
+                                    @(((DateTime)row.Date).ToString("dd/MM/yyyy"))
+                                </td>
+                                <td class="px-3 py-2 text-right text-gray-500">@row.OrderCount</td>
+                                <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                    @(((decimal)row.Revenue).ToString("N0"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t border-gray-200 bg-[#fefaf6]">
+                            <td class="px-3 py-2 font-bold">รวม</td>
+                            <td class="px-3 py-2 text-right font-bold">@ViewBag.TotalOrders</td>
+                            <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                @(((decimal)ViewBag.TotalRevenue).ToString("N0"))
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- ===== ยอดขายแยกตามเมนู ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">ยอดขายแยกตามเมนู</div>
+        <div class="admin-card-body p-0">
+            @if (salesByMenu == null || !salesByMenu.Any())
+            {
+                <div class="p-6 text-center text-gray-400 text-sm">ไม่มีข้อมูล</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">เมนู</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">จำนวน</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">รายได้ (฿)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in salesByMenu)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700 font-semibold">@row.MenuName</td>
+                                <td class="px-3 py-2 text-right text-gray-500">@row.Quantity</td>
+                                <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                    @(((decimal)row.Revenue).ToString("N0"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-6 items-start mt-6">
+
+    <!-- ===== ยอดขายแยกตามชั่วโมง ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">ยอดขายแยกตามชั่วโมง</div>
+        <div class="admin-card-body p-0">
+            @if (salesByHour == null || !salesByHour.Any())
+            {
+                <div class="p-6 text-center text-gray-400 text-sm">ไม่มีข้อมูล</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">ชั่วโมง</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">ออเดอร์</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">รายได้ (฿)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in salesByHour)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700">
+                                    @($"{(int)row.Hour:D2}:00 – {(int)row.Hour:D2}:59")
+                                </td>
+                                <td class="px-3 py-2 text-right text-gray-500">@row.OrderCount</td>
+                                <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                    @(((decimal)row.Revenue).ToString("N0"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- ===== ยอดชำระแยกตาม Payment Channel ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">ยอดชำระแยกตามช่องทาง</div>
+        <div class="admin-card-body p-0">
+            @if (paymentChannels == null || !paymentChannels.Any())
+            {
+                <div class="p-6 text-center text-gray-400 text-sm">ไม่มีข้อมูล</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">ช่องทาง</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">รายการ</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">ยอดรวม (฿)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in paymentChannels)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700 font-semibold">@row.MethodName</td>
+                                <td class="px-3 py-2 text-right text-gray-500">@row.Count</td>
+                                <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                    @(((decimal)row.Total).ToString("N0"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t border-gray-200 bg-[#fefaf6]">
+                            <td class="px-3 py-[0.6rem] font-bold">รวมทั้งหมด</td>
+                            <td class="px-3 py-[0.6rem] text-right font-bold">
+                                @paymentChannels.Sum(r => (int)r.Count)
+                            </td>
+                            <td class="px-3 py-[0.6rem] text-right font-bold text-green-600">
+                                ฿@(paymentChannels.Sum(r => (decimal)r.Total).ToString("N0"))
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== ยอดขายแยกตามวันในสัปดาห์ + รายเดือน + รายไตรมาส ===== -->
+<div class="grid grid-cols-3 gap-6 mt-6">
+
+    <!-- ยอดขายแยกตามวันในสัปดาห์ -->
+    <div class="admin-card">
+        <div class="admin-card-header">ยอดขายแยกตามวันในสัปดาห์</div>
+        <div class="admin-card-body p-0">
+            @if (salesByWeekday == null || !salesByWeekday.Any())
+            {
+                <div class="p-6 text-center text-gray-400 text-sm">ไม่มีข้อมูล</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">วัน</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">ออเดอร์</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">รายได้ (฿)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in salesByWeekday)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700 font-semibold">@row.DayName</td>
+                                <td class="px-3 py-2 text-right text-gray-500">@row.OrderCount</td>
+                                <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                    @(((decimal)row.Revenue).ToString("N0"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- ยอดขายรายเดือน (ปีปัจจุบัน) -->
+    <div class="admin-card">
+        <div class="admin-card-header">ยอดขายรายเดือน (@DateTime.Today.Year)</div>
+        <div class="admin-card-body p-0 max-h-80 overflow-y-auto">
+            @if (salesByMonth == null || !salesByMonth.Any())
+            {
+                <div class="p-6 text-center text-gray-400 text-sm">ไม่มีข้อมูล</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 sticky top-0">
+                            <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">เดือน</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">ออเดอร์</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">รายได้ (฿)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in salesByMonth)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700 font-semibold">@row.MonthName</td>
+                                <td class="px-3 py-2 text-right text-gray-500">@row.OrderCount</td>
+                                <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                    @(((decimal)row.Revenue).ToString("N0"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t border-gray-200 bg-[#fefaf6]">
+                            <td class="px-3 py-2 font-bold">รวม</td>
+                            <td class="px-3 py-2 text-right font-bold">
+                                @salesByMonth.Sum(r => (int)r.OrderCount)
+                            </td>
+                            <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                @salesByMonth.Sum(r => (decimal)r.Revenue).ToString("N0")
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- ยอดขายรายไตรมาส -->
+    <div class="admin-card">
+        <div class="admin-card-header">ยอดขายรายไตรมาส (@DateTime.Today.Year)</div>
+        <div class="admin-card-body p-0">
+            @if (salesByQuarter == null || !salesByQuarter.Any())
+            {
+                <div class="p-6 text-center text-gray-400 text-sm">ไม่มีข้อมูล</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">ไตรมาส</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">ออเดอร์</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">รายได้ (฿)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in salesByQuarter)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700 font-semibold">@row.QuarterName</td>
+                                <td class="px-3 py-2 text-right text-gray-500">@row.OrderCount</td>
+                                <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                    @(((decimal)row.Revenue).ToString("N0"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t border-gray-200 bg-[#fefaf6]">
+                            <td class="px-3 py-2 font-bold">รวมทั้งปี</td>
+                            <td class="px-3 py-2 text-right font-bold">
+                                @salesByQuarter.Sum(r => (int)r.OrderCount)
+                            </td>
+                            <td class="px-3 py-2 text-right font-bold text-green-600">
+                                ฿@salesByQuarter.Sum(r => (decimal)r.Revenue).ToString("N0")
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== ยอดขาย Year-over-Year (ปีนี้ vs ปีที่แล้ว) ===== -->
+@if (yoyComparison != null)
+{
+    <div class="admin-card mt-6">
+        <div class="admin-card-header">
+            ยอดขาย Year-over-Year — @ViewBag.PrevYear vs @ViewBag.CurrentYear
+        </div>
+        <div class="admin-card-body p-0 overflow-x-auto">
+            <table class="w-full border-collapse text-[0.82rem]">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">เดือน</th>
+                        <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">@ViewBag.PrevYear (฿)</th>
+                        <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">@ViewBag.CurrentYear (฿)</th>
+                        <th class="px-3 py-2 text-right font-bold text-gray-500 text-[0.72rem] uppercase">เปลี่ยนแปลง</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-[0.72rem] uppercase">กราฟเปรียบเทียบ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        decimal maxYoy = yoyComparison.Max(r => Math.Max((decimal)r.CurrentYear, (decimal)r.PrevYear));
+                        if (maxYoy == 0) maxYoy = 1;
+                    }
+                    @foreach (var row in yoyComparison)
+                    {
+                        decimal curr    = (decimal)row.CurrentYear;
+                        decimal prev    = (decimal)row.PrevYear;
+                        decimal change  = prev > 0 ? Math.Round((curr - prev) / prev * 100, 1) : (curr > 0 ? 100 : 0);
+                        bool    isUp    = curr >= prev;
+                        int     wCurr   = (int)Math.Round(curr / maxYoy * 80);
+                        int     wPrev   = (int)Math.Round(prev / maxYoy * 80);
+
+                        <tr class="border-b border-gray-100">
+                            <td class="px-3 py-2 text-gray-700 font-semibold">@row.MonthName</td>
+                            <td class="px-3 py-2 text-right text-gray-500">
+                                @(prev > 0 ? prev.ToString("N0") : "—")
+                            </td>
+                            <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                                @(curr > 0 ? curr.ToString("N0") : "—")
+                            </td>
+                            <td class="px-3 py-2 text-right">
+                                @if (prev > 0 || curr > 0)
+                                {
+                                    <span class="text-[0.8rem] font-bold @(isUp ? "text-green-600" : "text-red-600")">
+                                        @(isUp ? "+" : "")@change%
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-gray-400">—</span>
+                                }
+                            </td>
+                            <td class="px-3 py-2 min-w-[120px]">
+                                <!-- กราฟ bar เปรียบเทียบ 2 ปี -->
+                                <div class="flex flex-col gap-[2px]">
+                                    <div class="bg-gray-200 rounded-[3px] h-[6px]">
+                                        <div class="bg-slate-400 rounded-[3px] h-[6px]" style="width:@wPrev%;"></div>
+                                    </div>
+                                    <div class="bg-gray-200 rounded-[3px] h-[6px]">
+                                        <div class="bg-[#6F4E37] rounded-[3px] h-[6px]" style="width:@wCurr%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="border-t border-gray-200 bg-[#fefaf6]">
+                        <td class="px-3 py-2 font-bold">รวมทั้งปี</td>
+                        <td class="px-3 py-2 text-right font-bold text-gray-500">
+                            @yoyComparison.Sum(r => (decimal)r.PrevYear).ToString("N0")
+                        </td>
+                        <td class="px-3 py-2 text-right font-bold text-[#6F4E37]">
+                            @yoyComparison.Sum(r => (decimal)r.CurrentYear).ToString("N0")
+                        </td>
+                        <td colspan="2">
+                            @{
+                                decimal totalCurr = yoyComparison.Sum(r => (decimal)r.CurrentYear);
+                                decimal totalPrev = yoyComparison.Sum(r => (decimal)r.PrevYear);
+                                decimal totalChange = totalPrev > 0 ? Math.Round((totalCurr - totalPrev) / totalPrev * 100, 1) : 0;
+                            }
+                            @if (totalPrev > 0)
+                            {
+                                <span class="px-3 font-bold text-[0.82rem] @(totalCurr >= totalPrev ? "text-green-600" : "text-red-600")">
+                                    @(totalCurr >= totalPrev ? "+" : "")@totalChange%
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            <!-- คำอธิบาย Legend -->
+            <div class="px-4 py-[0.6rem] text-[0.72rem] text-gray-400 flex gap-4">
+                <span><span class="inline-block w-3 h-[6px] bg-slate-400 rounded-sm mr-1 align-middle"></span>@ViewBag.PrevYear</span>
+                <span><span class="inline-block w-3 h-[6px] bg-[#6F4E37] rounded-sm mr-1 align-middle"></span>@ViewBag.CurrentYear</span>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ===== ส่วนขยาย: ความนิยม Options + ต้นทุนการสูญเสีย ===== -->
+<div class="grid grid-cols-2 gap-6 mt-6">
+
+    <!-- ตาราง: ความนิยมของ Options (ความหวาน, นม, ขนาด) -->
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-4 py-3 bg-violet-100 border-b border-violet-200">
+            <span class="font-bold text-sm text-violet-800">ความนิยมของ Options</span>
+        </div>
+        <div class="overflow-x-auto max-h-80 overflow-y-auto">
+            @if (optionPopularity == null || !optionPopularity.Any())
+            {
+                <div class="text-center text-gray-400 p-6 text-sm">ไม่มีข้อมูลในช่วงนี้</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 sticky top-0">
+                            <th class="px-3 py-2 text-left font-bold text-gray-700">ตัวเลือก</th>
+                            <th class="px-3 py-2 text-left font-bold text-gray-700">ค่า</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-700">จำนวนครั้ง</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var opt in optionPopularity)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-500">@opt.OptionName</td>
+                                <td class="px-3 py-2 text-gray-700 font-semibold">@opt.OptionValue</td>
+                                <td class="px-3 py-2 text-right font-bold text-violet-700">@opt.Count</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- ตาราง: ต้นทุนการสูญเสีย (Wastage Cost Breakdown) -->
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-4 py-3 bg-red-100 border-b border-red-300 flex justify-between items-center">
+            <span class="font-bold text-sm text-red-800">ต้นทุนการสูญเสีย (Wastage)</span>
+            <span class="text-[0.8rem] font-bold text-red-600">
+                รวม: ฿@(ViewBag.TotalWastageCost is decimal twc ? twc.ToString("N2") : "0.00")
+            </span>
+        </div>
+        <div class="overflow-x-auto max-h-80 overflow-y-auto">
+            @if (wastageCost == null || !wastageCost.Any())
+            {
+                <div class="text-center text-gray-400 p-6 text-sm">ไม่มีการบันทึก Wastage ในช่วงนี้</div>
+            }
+            else
+            {
+                <table class="w-full border-collapse text-[0.82rem]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 sticky top-0">
+                            <th class="px-3 py-2 text-left font-bold text-gray-700">วัตถุดิบ</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-700">ปริมาณ</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-700">ต้นทุน/หน่วย</th>
+                            <th class="px-3 py-2 text-right font-bold text-gray-700">รวม (บาท)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var wc in wastageCost)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="px-3 py-2 text-gray-700 font-semibold">@wc.IngredientName</td>
+                                <td class="px-3 py-2 text-right text-gray-500">
+                                    @(((float)wc.TotalQty).ToString("F2")) @wc.Unit
+                                </td>
+                                <td class="px-3 py-2 text-right text-gray-500">
+                                    ฿@(((decimal)wc.CostPerUnit).ToString("N2"))
+                                </td>
+                                <td class="px-3 py-2 text-right font-bold text-red-600">
+                                    ฿@(((decimal)wc.TotalCost).ToString("N2"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t border-gray-200 bg-red-50">
+                            <td colspan="3" class="px-3 py-[0.6rem] font-bold text-red-800">รวมทั้งหมด</td>
+                            <td class="px-3 py-[0.6rem] text-right font-bold text-red-600">
+                                ฿@(wastageCost.Sum(r => (decimal)r.TotalCost).ToString("N2"))
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>

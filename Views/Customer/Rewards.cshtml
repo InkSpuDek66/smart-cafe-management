@@ -1,0 +1,107 @@
+@* Views/Customer/Rewards.cshtml *@
+@* ------------------------------------------------
+- หน้ารางวัลแต้มสะสม (สำหรับลูกค้า)
+- แสดงรายการรางวัลที่สามารถแลกได้
+- URL เข้าถึง: /Customer/Rewards
+- Method: GET
+- ViewModel: List<Reward> (ส่งมาจาก Controller)
+- Controller Action: CustomerController.Rewards (GET)
+------------------------------------------------ *@
+
+@using Project_CSI402_T2_Y3.Models.Db
+@model List<Reward>
+@{
+    ViewData["Title"] = "รางวัลแต้มสะสม";
+    Layout = "_MobileLayout";
+}
+
+<div class="p-4">
+    <h2 class="font-['Playfair_Display'] text-[1.25rem] font-bold text-[#3E2723] mb-1">รางวัลแต้มสะสม</h2>
+    <p class="text-[0.8rem] text-[#8D6748] mb-5">
+        สะสมแต้มจากการสั่งซื้อ 10 บาท = 1 แต้ม — แจ้งพนักงานเพื่อแลกรางวัล
+    </p>
+
+    <!-- แบนเนอร์วิธีแลก — เก็บ linear-gradient เพราะ Tailwind ไม่มี equivalent -->
+    <div class="flex items-center gap-3.5 rounded-2xl px-5 py-4 mb-6 text-white"
+         style="background:linear-gradient(135deg,#6F4E37,#3E2723);">
+        <svg class="w-8 h-8 flex-shrink-0 opacity-85" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+        </svg>
+        <div>
+            <div class="font-bold text-[0.95rem]">วิธีแลกรางวัล</div>
+            <div class="text-[0.78rem] opacity-80 mt-0.5 leading-relaxed">
+                แจ้งพนักงานที่เคาน์เตอร์ พร้อมเบอร์โทรที่สมัครสมาชิก
+                พนักงานจะตรวจสอบแต้มและดำเนินการแลกให้
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-12 text-gray-400">
+            <p>ยังไม่มีรางวัลในขณะนี้</p>
+        </div>
+    }
+    else
+    {
+        <!-- Grid รางวัล -->
+        <div class="grid grid-cols-2 gap-3.5">
+            @foreach (var reward in Model)
+            {
+                <div class="bg-white rounded-2xl border border-[#EFE0C9] overflow-hidden shadow-sm">
+
+                    <!-- รูปรางวัล -->
+                    <div class="w-full overflow-hidden" style="aspect-ratio:4/3;">
+                        @if (!string.IsNullOrEmpty(reward.ImageUrl))
+                        {
+                            <img src="@reward.ImageUrl" alt="@reward.RewardName"
+                                 class="w-full h-full object-cover"
+                                 onerror="this.src='https://placehold.co/200x150/EFE0C9/6F4E37?text=Gift'" />
+                        }
+                        else
+                        {
+                            <div class="w-full h-full bg-[#EFE0C9] flex items-center justify-center">
+                                <!-- Star icon — Heroicons outline (รางวัล) -->
+                                <svg class="w-10 h-10 text-[#C8A97E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                </svg>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- ข้อมูลรางวัล -->
+                    <div class="p-3">
+                        <div class="font-bold text-[0.875rem] text-[#3E2723] leading-snug mb-1.5">
+                            @reward.RewardName
+                        </div>
+
+                        <!-- แต้มที่ต้องใช้ -->
+                        <div class="flex items-center gap-1 mb-2">
+                            <!-- Star icon — Heroicons solid -->
+                            <svg class="w-3.5 h-3.5 text-[#C8A97E]" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                            </svg>
+                            <span class="font-['Inter'] text-base font-bold text-[#6F4E37] tracking-tight">
+                                @reward.PointsRequired
+                            </span>
+                            <span class="text-[0.7rem] text-[#8D6748]">แต้ม</span>
+                        </div>
+
+                        <!-- สต็อก -->
+                        @if (reward.StockQuantity.HasValue)
+                        {
+                            <div class="text-[0.7rem] text-gray-400">คงเหลือ @reward.StockQuantity ชิ้น</div>
+                        }
+
+                        <!-- ปุ่มแจ้งพนักงาน -->
+                        <div class="mt-2 bg-[#EFE0C9] text-[#6F4E37] text-center py-1.5 rounded-lg text-[0.75rem] font-bold">
+                            แจ้งพนักงาน
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

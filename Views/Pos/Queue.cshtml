@@ -1,0 +1,789 @@
+@* Views/Pos/Queue.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงคิวออเดอร์
+- แสดงรายการออเดอร์ที่อยู่ในคิวพร้อมสถานะของแต่ละรายการ
+- ปุ่ม "Start" สำหรับเริ่มดำเนินการออเดอร์
+- ปุ่ม "Served" สำหรับอัปเดตสถานะออเดอร์เป็นเสร็จแล้ว
+- URL เข้าถึง: /Pos/Queue
+- Method: GET (แสดงรายการออเดอร์), POST (อัปเดตสถานะรายการ)
+- ViewModel: PosQueueViewModel (มี properties: List<OrderWithItemsViewModel> Orders)
+- Controller Action: PosController.Queue (GET), PosController.StartOrder (POST), PosController.MarkOrderServed (POST)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.PosQueueViewModel
+@{
+    ViewData["Title"] = "คิวออเดอร์";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    /* Layout สำหรับ Split View */
+    .pos-split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        height: calc(100vh - 120px);
+    }
+
+    .pos-panel {
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border-radius: 12px;
+        border: 1.5px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    .pos-panel-header {
+        padding: 0.75rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .pos-panel-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    /* การ์ดออเดอร์ */
+    .order-card {
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .order-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0.75rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .order-card-body {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .item-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0;
+        font-size: 0.82rem;
+        color: #374151;
+        border-bottom: 1px dashed #f3f4f6;
+    }
+
+    .item-row:last-child { border-bottom: none; }
+
+    .badge-status {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 99px;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    .badge-waiting  { background: #fef3c7; color: #92400e; }
+    .badge-paid     { background: #d1fae5; color: #065f46; }
+    .badge-preparing{ background: #dbeafe; color: #1e40af; }
+    .badge-ready    { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+
+    .btn-start {
+        background: #6F4E37;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.3rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-start:hover { background: #5a3e2b; }
+
+    .btn-served {
+        background: #16a34a;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.3rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-served:hover { background: #15803d; }
+
+    /* แจ้งเตือน Slip ใหม่ (SignalR) */
+    .slip-alert {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background: #fef3c7;
+        border: 2px solid #f59e0b;
+        border-radius: 10px;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #92400e;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        z-index: 9999;
+        display: none;
+        animation: slideIn 0.3s ease;
+    }
+
+    @@keyframes slideIn {
+        from { transform: translateX(120%); }
+        to   { transform: translateX(0); }
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #9ca3af;
+        padding: 2rem;
+        font-size: 0.875rem;
+    }
+
+    .count-badge {
+        background: #6F4E37;
+        color: #fff;
+        border-radius: 99px;
+        padding: 0.1rem 0.5rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+
+    /* ส่วน Slip payment status ใน Queue ซ้าย */
+    .slip-box {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 6px;
+        padding: 0.4rem 0.6rem;
+        margin-top: 0.4rem;
+        font-size: 0.75rem;
+    }
+
+    .slip-box.slip-pending  { background: #fffbeb; border-color: #fde68a; }
+    .slip-box.slip-approved { background: #d1fae5; border-color: #6ee7b7; }
+    .slip-box.slip-rejected { background: #fee2e2; border-color: #fca5a5; }
+
+    .btn-approve {
+        background: #059669;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-approve:hover { background: #047857; }
+
+    .btn-reject {
+        background: #dc2626;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-reject:hover { background: #b91c1c; }
+
+    .btn-group-checkin {
+        background: #7c3aed;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+        margin-top: 0.3rem;
+    }
+
+    .btn-group-checkin:hover { background: #6d28d9; }
+
+    .btn-issue-reward {
+        background: #d97706;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-issue-reward:hover { background: #b45309; }
+
+    /* Modal สำหรับออก Reward */
+    .reward-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        z-index: 999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .reward-modal-overlay.active { display: flex; }
+
+    .reward-modal {
+        background: #fff;
+        border-radius: 14px;
+        padding: 1.5rem;
+        width: 380px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+</style>
+
+<!-- Modal: ออก Reward ให้สมาชิก -->
+<div id="rewardModalOverlay" class="reward-modal-overlay">
+    <div class="reward-modal">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-base font-bold text-[#6F4E37]">ออก Reward</h2>
+            <button onclick="closeRewardModal()"
+                    class="bg-transparent border-none text-[1.1rem] cursor-pointer text-gray-500">x</button>
+        </div>
+        <div id="rewardMemberInfo" class="text-[0.8rem] text-gray-700 mb-3"></div>
+        <div id="rewardList" class="flex flex-col gap-2">
+            <div class="text-gray-400 text-[0.8rem]">กำลังโหลด...</div>
+        </div>
+        <div id="rewardResult" class="mt-3 text-[0.8rem]"></div>
+    </div>
+</div>
+
+<!-- Modal: ยืนยัน Group Check-in -->
+<dialog id="groupCheckinModal" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="text-base font-bold text-[#6F4E37] mb-2">Group Check-in</h3>
+        <div class="text-[0.82rem] text-gray-700 leading-relaxed">
+            <p class="font-semibold text-gray-800 mb-1">โปรโมชันนี้คืออะไร?</p>
+            <p class="mb-2">ลูกค้าที่มาเป็นกลุ่ม 5 คนขึ้นไป และ Check-in ร้านผ่าน Social Media จะได้รับส่วนลดพิเศษ</p>
+            <p class="font-semibold text-gray-800 mb-1">เงื่อนไข</p>
+            <ul class="list-disc pl-4 mb-3 text-gray-600 text-[0.78rem]">
+                <li>ลูกค้าต้องมาเป็นกลุ่มตั้งแต่ 5 คนขึ้นไป</li>
+                <li>ต้อง Check-in หรือแชร์ร้านบน Social Media (Facebook / Instagram)</li>
+                <li>พนักงานต้องตรวจสอบหน้าจอมือถือของลูกค้าด้วยตนเองก่อนกดอนุมัติ</li>
+            </ul>
+        </div>
+        <p class="text-[0.8rem] font-bold text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-3">
+            กรุณายืนยันว่าได้ตรวจสอบการ Check-in ของลูกค้าแล้ว
+        </p>
+        <div class="modal-action">
+            <form method="dialog">
+                <button class="btn btn-sm btn-ghost">ยกเลิก</button>
+            </form>
+            <button id="groupCheckinConfirmBtn" class="btn btn-sm bg-purple-600 text-white border-none hover:bg-purple-700">
+                ยืนยันอนุมัติ
+            </button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- แจ้งเตือน Slip ใหม่จาก SignalR -->
+<div id="slipAlert" class="slip-alert">
+    แจ้งเตือน: มีสลิปรอ Verify!
+    <button onclick="document.getElementById('slipAlert').style.display='none'"
+            class="ml-3 bg-transparent border-none font-bold cursor-pointer text-amber-800">x</button>
+</div>
+
+<!-- หัวหน้า + Auto-refresh -->
+<div class="flex items-center justify-between mb-3">
+    <h1 class="font-serif text-[1.4rem] font-bold text-[#6F4E37]">
+        คิวออเดอร์
+    </h1>
+    <div class="flex gap-2 items-center">
+        <a asp-controller="Pos" asp-action="Kds"
+           class="bg-blue-800 text-white px-4 py-1.5 rounded-md text-xs font-bold no-underline">
+            KDS
+        </a>
+        <a asp-controller="Pos" asp-action="Wastage"
+           class="bg-amber-400 text-white px-4 py-1.5 rounded-md text-xs font-bold no-underline">
+            Wastage
+        </a>
+        <span id="refresh-timer" class="text-xs text-gray-400">รีเฟรชใน 30s</span>
+    </div>
+</div>
+
+
+<!-- Split View -->
+<div class="pos-split">
+
+    <!-- ===== ฝั่งซ้าย: รอชำระเงิน ===== -->
+    <div class="pos-panel">
+        <div class="pos-panel-header" style="background:#fef3c7;color:#92400e;border-bottom:1.5px solid #fde68a;">
+            <span>รอชำระเงิน</span>
+            <span class="count-badge" style="background:#92400e;">@Model.UnpaidOrders.Count</span>
+        </div>
+        <div class="pos-panel-body">
+            @if (!Model.UnpaidOrders.Any())
+            {
+                <div class="empty-state">ไม่มีออเดอร์รอชำระ</div>
+            }
+            @foreach (var order in Model.UnpaidOrders)
+            {
+                <div class="order-card">
+                    <div class="order-card-head">
+                        <div>
+                            <span class="font-bold text-sm text-gray-800">#@order.OrderId</span>
+                            @if (!string.IsNullOrEmpty(order.TableNumber))
+                            {
+                                <span class="ml-1.5 text-xs text-gray-500">โต๊ะ @order.TableNumber</span>
+                            }
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[0.82rem] font-bold text-[#6F4E37]">฿@order.TotalAmount?.ToString("N0")</span>
+                            <span class="badge-status badge-waiting">รอชำระ</span>
+                        </div>
+                    </div>
+                    <div class="order-card-body">
+                        @if (!string.IsNullOrEmpty(order.CustomerName))
+                        {
+                            <div class="text-xs text-gray-500 mb-1">@order.CustomerName</div>
+                        }
+                        @foreach (var item in order.Items)
+                        {
+                            <div class="item-row">
+                                <span class="font-bold text-[#6F4E37]">x@(item.Quantity)</span>
+                                <span>@item.MenuName</span>
+                                @if (item.Options.Any())
+                                {
+                                    <span class="text-gray-400 text-[0.72rem]">(@string.Join(", ", item.Options))</span>
+                                }
+                            </div>
+                        }
+
+                        <!-- ยอดสุทธิปัจจุบัน (อัปเดตได้เมื่อมีการแลกสิทธิ์) -->
+                        <div class="flex justify-between items-center mt-1.5">
+                            <span class="text-[0.7rem] text-gray-400">@order.CreatedAt?.ToString("HH:mm")</span>
+                            <span class="text-[0.8rem] font-bold text-[#6F4E37]" id="net-@order.OrderId">
+                                ฿@order.NetAmount?.ToString("N0")
+                            </span>
+                        </div>
+
+                        @if (order.MemberId.HasValue)
+                        {
+                            <div class="flex items-center gap-1.5 mt-1.5 text-[0.72rem] text-gray-500">
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                <span>สมาชิก</span>
+                            </div>
+                        }
+
+                        @{
+                            // แสดงสถานะ Payment Slip และปุ่ม Approve/Reject
+                            bool hasSlip       = order.SlipUrl != null;
+                            bool slipPending   = order.PaymentStatusId == 1;
+                            bool slipRejected  = order.PaymentStatusId == 3;
+                        }
+                        @if (hasSlip)
+                        {
+                            string slipBoxClass = slipPending ? "slip-pending" : (slipRejected ? "slip-rejected" : "slip-approved");
+                            <div class="slip-box @slipBoxClass">
+                                <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                                    <span>
+                                        @if (slipPending)
+                                        {
+                                            <span class="font-bold text-amber-800">สลิปรอ Verify</span>
+                                        }
+                                        else if (slipRejected)
+                                        {
+                                            <span class="font-bold text-red-800">สลิปถูกปฏิเสธ</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="font-bold text-green-800">สลิปอนุมัติแล้ว</span>
+                                        }
+                                    </span>
+                                    <a href="@order.SlipUrl" target="_blank"
+                                       class="text-[0.7rem] text-blue-600 underline">ดูสลิป</a>
+                                </div>
+                                @if (slipPending)
+                                {
+                                    <!-- ปุ่ม Approve/Reject สำหรับ Cashier บนหน้า POS -->
+                                    <div class="flex gap-1.5 mt-1.5">
+                                        <button class="btn-approve"
+                                                onclick="approvePosPayment(@order.PaymentId, @order.OrderId, this)">
+                                            อนุมัติ
+                                        </button>
+                                        <button class="btn-reject"
+                                                onclick="rejectPosPayment(@order.PaymentId, this)">
+                                            ปฏิเสธ
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <!-- ปุ่ม Group Check-in: เปิด modal ยืนยันพร้อมอธิบายเงื่อนไข -->
+                        <div class="mt-1.5">
+                            <button class="btn-group-checkin"
+                                    onclick="openGroupCheckinModal(@order.OrderId)">
+                                Group Check-in
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- ===== ฝั่งขวา: ชำระแล้ว / กำลังทำ / พร้อมเสิร์ฟ ===== -->
+    <div class="pos-panel">
+        <div class="pos-panel-header" style="background:#d1fae5;color:#065f46;border-bottom:1.5px solid #6ee7b7;">
+            <span>ออเดอร์ที่กำลังดำเนินการ</span>
+            <span class="count-badge" style="background:#065f46;">@Model.ActiveOrders.Count</span>
+        </div>
+        <div class="pos-panel-body">
+            @if (!Model.ActiveOrders.Any())
+            {
+                <div class="empty-state">ไม่มีออเดอร์ที่กำลังดำเนินการ</div>
+            }
+            @foreach (var order in Model.ActiveOrders)
+            {
+                string badgeClass = order.StatusId switch
+                {
+                    2 => "badge-paid",
+                    3 => "badge-preparing",
+                    4 => "badge-ready",
+                    _ => ""
+                };
+
+                <div class="order-card" style="@(order.StatusId == 4 ? "border-color:#86efac;" : "")">
+                    <div class="order-card-head">
+                        <div class="flex items-center gap-2">
+                            @if (!string.IsNullOrEmpty(order.QueueNumber))
+                            {
+                                <span class="font-serif text-[1.1rem] font-bold text-[#6F4E37]">
+                                    @order.QueueNumber
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="font-bold text-sm text-gray-800">#@order.OrderId</span>
+                            }
+                            @if (!string.IsNullOrEmpty(order.TableNumber))
+                            {
+                                <span class="text-xs text-gray-500">โต๊ะ @order.TableNumber</span>
+                            }
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="badge-status @badgeClass">@order.StatusName</span>
+                            @if (order.StatusId == 2)
+                            {
+                                <!-- ปุ่มเริ่มทำ: เปลี่ยน Status เป็น Preparing (3) -->
+                                <button class="btn-start" onclick="markPreparing(@order.OrderId, this)">
+                                    เริ่มทำ
+                                </button>
+                            }
+                            @if (order.StatusId == 4)
+                            {
+                                <!-- ปุ่มส่งลูกค้า: เปลี่ยน Status เป็น Completed (5) แล้วลบการ์ดออก -->
+                                <button class="btn-served" onclick="markCompleted(@order.OrderId, this)">
+                                    ส่งลูกค้าแล้ว
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="order-card-body">
+                        @foreach (var item in order.Items)
+                        {
+                            string itemDoneClass = item.StatusId == 3
+                                ? "line-through text-gray-400"
+                                : "";
+                            <div class="item-row @itemDoneClass">
+                                <span class="font-bold text-[#6F4E37]">x@(item.Quantity)</span>
+                                <span>@item.MenuName</span>
+                                @if (item.Options.Any())
+                                {
+                                    <span class="text-gray-400 text-[0.72rem]">(@string.Join(", ", item.Options))</span>
+                                }
+                                @if (item.StatusId == 3)
+                                {
+                                    <span class="text-[0.68rem] text-green-300 font-bold">เสร็จแล้ว</span>
+                                }
+                            </div>
+                        }
+                        <div class="text-[0.7rem] text-gray-400 mt-1.5">
+                            @order.CreatedAt?.ToString("HH:mm")
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+    // Auto-refresh ทุก 30 วินาที
+    var seconds = 30;
+    var timerEl = document.getElementById('refresh-timer');
+    setInterval(function () {
+        seconds--;
+        timerEl.textContent = 'รีเฟรชใน ' + seconds + 's';
+        if (seconds <= 0) location.reload();
+    }, 1000);
+
+    // กด "เริ่มทำ" → เปลี่ยน OrderStatus เป็น Preparing (3)
+    function markPreparing(orderId, btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('/Pos/MarkOrderPreparing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'orderId=' + orderId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) location.reload();
+            else { btn.disabled = false; btn.textContent = 'เริ่มทำ'; }
+        });
+    }
+
+    // กด "ส่งลูกค้าแล้ว" → เปลี่ยน OrderStatus เป็น Completed (5) แล้วลบการ์ดออก
+    function markCompleted(orderId, btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('/Pos/MarkOrderCompleted', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'orderId=' + orderId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                // ลบการ์ดออกจาก UI ทันที ไม่ต้อง reload ทั้งหน้า
+                var card = btn.closest('.order-card');
+                if (card) {
+                    card.style.transition = 'opacity 0.4s';
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 400);
+                }
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'ส่งลูกค้าแล้ว';
+            }
+        });
+    }
+
+    // SignalR — รับแจ้งเตือน Slip ใหม่จาก Server แบบ Real-time
+    var connection = new signalR.HubConnectionBuilder()
+        .withUrl("/hubs/cafe")
+        .withAutomaticReconnect()
+        .build();
+
+    // เมื่อมีสลิปใหม่รอ Verify → แสดง Alert บนหน้าจอ
+    connection.on("NotifyNewSlip", function (data) {
+        var alert = document.getElementById('slipAlert');
+        alert.textContent = 'แจ้งเตือน: สลิปใหม่รอ Verify (ออเดอร์ #' + data.orderId + ' โต๊ะ ' + (data.tableNumber || '—') + ')';
+        alert.style.display = 'block';
+        // รีเฟรชหน้าหลังจาก 3 วินาทีเพื่อแสดงสลิปล่าสุด
+        setTimeout(() => location.reload(), 3000);
+    });
+
+    connection.start()
+        .then(() => connection.invoke("JoinGroup", "staff"))
+        .catch(err => console.warn("SignalR connect failed:", err));
+
+    // Approve สลิปจากหน้า POS Queue โดยตรง
+    function approvePosPayment(paymentId, orderId, btn) {
+        if (!confirm('อนุมัติสลิปออเดอร์ #' + orderId + '?')) return;
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('/Pos/ApprovePaymentAtPos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'paymentId=' + paymentId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                location.reload();
+            } else {
+                alert(data.message);
+                btn.disabled = false;
+                btn.textContent = 'อนุมัติ';
+            }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = 'อนุมัติ'; });
+    }
+
+    // Reject สลิปจากหน้า POS Queue โดยตรง
+    function rejectPosPayment(paymentId, btn) {
+        if (!confirm('ปฏิเสธสลิปนี้?')) return;
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('/Pos/RejectPaymentAtPos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'paymentId=' + paymentId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                location.reload();
+            } else {
+                alert(data.message);
+                btn.disabled = false;
+                btn.textContent = 'ปฏิเสธ';
+            }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = 'ปฏิเสธ'; });
+    }
+
+    // เปิด Modal ยืนยัน Group Check-in พร้อมอธิบายเงื่อนไข
+    var groupCheckinOrderId = 0;
+    var groupCheckinTriggerBtn = null;
+
+    function openGroupCheckinModal(orderId) {
+        groupCheckinOrderId = orderId;
+        // หาปุ่มที่กดเพื่ออัปเดตสถานะหลัง approve
+        groupCheckinTriggerBtn = event.target.closest('.btn-group-checkin');
+        document.getElementById('groupCheckinModal').showModal();
+    }
+
+    // กดยืนยันใน Modal → เรียก API อนุมัติ Group Check-in
+    document.getElementById('groupCheckinConfirmBtn').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = '...';
+        document.getElementById('groupCheckinModal').close();
+
+        fetch('/Pos/ApproveGroupCheckin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'orderId=' + groupCheckinOrderId
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = 'ยืนยันอนุมัติ';
+            if (data.ok) {
+                var netEl = document.getElementById('net-' + groupCheckinOrderId);
+                if (netEl) netEl.textContent = '฿' + Number(data.newNetAmount).toLocaleString('th-TH', { maximumFractionDigits: 0 });
+                if (groupCheckinTriggerBtn) {
+                    groupCheckinTriggerBtn.textContent = 'อนุมัติแล้ว -฿' + data.discount;
+                    groupCheckinTriggerBtn.disabled = true;
+                }
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = 'ยืนยันอนุมัติ';
+        });
+    });
+
+    // ตัวแปร global สำหรับ Reward Modal
+    var rewardModalMemberId = 0;
+
+    // เปิด Modal ออก Reward — โหลดรายการ Reward จาก API
+    function openRewardModal(memberId, memberPoints, memberName) {
+        rewardModalMemberId = memberId;
+
+        document.getElementById('rewardMemberInfo').innerHTML =
+            '<strong>' + memberName + '</strong> — แต้มคงเหลือ: <strong>' + memberPoints + '</strong> แต้ม';
+        document.getElementById('rewardResult').innerHTML = '';
+        document.getElementById('rewardList').innerHTML = '<div style="color:#9ca3af;font-size:0.8rem;">กำลังโหลด...</div>';
+        document.getElementById('rewardModalOverlay').classList.add('active');
+
+        fetch('/Pos/GetRewards')
+            .then(r => r.json())
+            .then(rewards => {
+                if (!rewards || rewards.length === 0) {
+                    document.getElementById('rewardList').innerHTML =
+                        '<div style="color:#9ca3af;font-size:0.8rem;text-align:center;padding:1rem;">ไม่มี Reward ที่พร้อมใช้งาน</div>';
+                    return;
+                }
+                var html = '';
+                rewards.forEach(function(r) {
+                    var canRedeem = memberPoints >= r.pointsRequired;
+                    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem;border:1px solid #e5e7eb;border-radius:8px;background:#fefaf6;">'
+                          + '<div>'
+                          + '<div style="font-size:0.82rem;font-weight:700;color:#1f2937;">' + r.rewardName + '</div>'
+                          + '<div style="font-size:0.72rem;color:#6b7280;">' + r.pointsRequired + ' แต้ม | สต็อก: ' + r.stockQuantity + '</div>'
+                          + '</div>'
+                          + '<button onclick="issueReward(' + r.rewardId + ', this)" '
+                          + (canRedeem ? '' : 'disabled ')
+                          + 'style="background:' + (canRedeem ? '#d97706' : '#e5e7eb') + ';color:' + (canRedeem ? '#fff' : '#9ca3af') + ';'
+                          + 'border:none;border-radius:5px;padding:0.25rem 0.65rem;font-size:0.72rem;font-weight:700;cursor:' + (canRedeem ? 'pointer' : 'default') + ';">'
+                          + (canRedeem ? 'ออก Reward' : 'แต้มไม่พอ')
+                          + '</button>'
+                          + '</div>';
+                });
+                document.getElementById('rewardList').innerHTML = html;
+            })
+            .catch(() => {
+                document.getElementById('rewardList').innerHTML =
+                    '<div style="color:#ef4444;font-size:0.8rem;">โหลดไม่สำเร็จ</div>';
+            });
+    }
+
+    function closeRewardModal() {
+        document.getElementById('rewardModalOverlay').classList.remove('active');
+    }
+
+    // ออก Reward ให้สมาชิก
+    function issueReward(rewardId, btn) {
+        if (!rewardModalMemberId) return;
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('/Pos/IssueReward', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'memberId=' + rewardModalMemberId + '&rewardId=' + rewardId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                document.getElementById('rewardResult').innerHTML =
+                    '<div style="color:#059669;font-weight:700;">ออก ' + data.rewardName + ' สำเร็จ | แต้มคงเหลือ: ' + data.remainPoints + '</div>';
+                // อัปเดตแต้มในการ์ดออเดอร์ด้วย (ถ้ามี)
+                document.querySelectorAll('[id^="pts-"]').forEach(function(el) {
+                    el.textContent = data.remainPoints;
+                });
+                setTimeout(() => { closeRewardModal(); location.reload(); }, 1500);
+            } else {
+                document.getElementById('rewardResult').innerHTML =
+                    '<div style="color:#dc2626;">' + data.message + '</div>';
+                btn.disabled = false;
+                btn.textContent = 'ออก Reward';
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = 'ออก Reward';
+        });
+    }
+
+    // ปิด Modal เมื่อคลิกนอกกล่อง
+    document.getElementById('rewardModalOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeRewardModal();
+    });
+</script>

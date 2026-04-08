@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Smart Cafe</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* ===== CSS Variables: Earth Tone สไตล์ร้านกาแฟ ===== */
+        :root {
+            --cf-dark:    #3E2723;
+            --cf-primary: #6F4E37;
+            --cf-medium:  #8D6748;
+            --cf-latte:   #C8A97E;
+            --cf-cream:   #EFE0C9;
+            --cf-foam:    #FDF6EC;
+            --cf-accent:  #A0522D;
+            /* บังคับ browser ไม่ให้ใช้ auto dark mode กับหน้านี้ */
+            color-scheme: light;
+        }
+
+        /* ===== Base ===== */
+        body {
+            background-color: var(--cf-foam);
+            color: var(--cf-dark);
+            font-family: 'Lato', sans-serif;
+        }
+
+        /* ===== Navbar ===== */
+        .cf-navbar {
+            background-color: var(--cf-dark);
+            border-bottom: 3px solid var(--cf-latte);
+            box-shadow: 0 2px 14px rgba(62, 39, 35, 0.30);
+        }
+
+        .cf-brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--cf-latte);
+            letter-spacing: 0.04em;
+        }
+
+        .cf-brand:hover { background-color: transparent !important; }
+
+        .cf-navbar .menu a,
+        .cf-navbar .menu summary {
+            color: var(--cf-cream);
+            font-size: 0.82rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: background 0.18s, color 0.18s;
+        }
+
+        .cf-navbar .menu a:hover,
+        .cf-navbar .menu summary:hover {
+            background-color: var(--cf-primary) !important;
+            color: #fff !important;
+        }
+
+        .cf-navbar details > ul {
+            background-color: var(--cf-dark) !important;
+            border: 1px solid var(--cf-latte);
+            min-width: 185px;
+        }
+
+        /* ===== DaisyUI Overrides: สี Utility ===== */
+        .text-primary   { color: var(--cf-primary) !important; }
+        .text-secondary { color: var(--cf-medium)  !important; }
+        .text-success   { color: #3d7a3d !important; }
+        .text-error     { color: #b91c1c !important; }
+
+        .bg-base-100 { background-color: #fff !important; }
+        .bg-base-200 { background-color: var(--cf-cream) !important; }
+
+        /* ===== Buttons ===== */
+        .btn-primary {
+            background-color: var(--cf-primary) !important;
+            border-color: var(--cf-primary) !important;
+            color: #fff !important;
+            font-weight: 700;
+        }
+        .btn-primary:hover {
+            background-color: var(--cf-dark) !important;
+            border-color: var(--cf-dark) !important;
+        }
+
+        .btn-warning {
+            background-color: var(--cf-latte) !important;
+            border-color: var(--cf-latte) !important;
+            color: var(--cf-dark) !important;
+            font-weight: 700;
+        }
+        .btn-warning:hover { background-color: var(--cf-cream) !important; }
+
+        .btn-outline {
+            border-color: var(--cf-primary) !important;
+            color: var(--cf-primary) !important;
+        }
+        .btn-outline:hover {
+            background-color: var(--cf-primary) !important;
+            color: #fff !important;
+        }
+
+        .btn-ghost {
+            color: var(--cf-primary) !important;
+        }
+        .btn-ghost:hover {
+            background-color: var(--cf-cream) !important;
+            color: var(--cf-dark) !important;
+        }
+
+        .btn-error {
+            background-color: #dc2626 !important;
+            border-color: #dc2626 !important;
+            color: #fff !important;
+        }
+        .btn-error:hover { background-color: #b91c1c !important; }
+
+        /* ===== Cards ===== */
+        .card {
+            background-color: #fff !important;
+            border: 1px solid var(--cf-cream) !important;
+        }
+
+        /* ===== Form ===== */
+        .input, .select, .textarea {
+            border-color: #d9c9b6 !important;
+            background-color: #fefaf6 !important;
+        }
+        .input:focus, .select:focus, .textarea:focus {
+            border-color: var(--cf-latte) !important;
+            box-shadow: 0 0 0 2px rgba(200,169,126,0.30) !important;
+            outline: none !important;
+        }
+        .input-disabled, .input:disabled, .select:disabled {
+            background-color: var(--cf-cream) !important;
+            color: var(--cf-medium) !important;
+            opacity: 1 !important;
+        }
+        .label-text {
+            font-weight: 700;
+            color: var(--cf-primary) !important;
+            font-size: 0.80rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .checkbox {
+            border-color: var(--cf-latte) !important;
+        }
+        .checkbox:checked {
+            background-color: var(--cf-primary) !important;
+            border-color: var(--cf-primary) !important;
+        }
+
+        /* ===== Tables ===== */
+        .table thead tr {
+            background-color: var(--cf-primary);
+            color: #fff;
+        }
+        .table thead th {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: #fff !important;
+            border-color: var(--cf-medium) !important;
+        }
+        .table-zebra tbody tr:nth-child(odd) td  { background-color: #fdf6ec !important; }
+        .table-zebra tbody tr:nth-child(even) td { background-color: #f7ede0 !important; }
+        .table-zebra tbody tr:hover td { background-color: var(--cf-cream) !important; }
+        .table td, .table th { border-color: #e5d3bf !important; }
+
+        /* ===== Stats ===== */
+        .stat {
+            background-color: #fff !important;
+            border: 1px solid var(--cf-cream) !important;
+        }
+        .stat-title  { color: var(--cf-medium) !important; }
+        .stat-value  { color: var(--cf-primary) !important; font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+        .stat-desc   { color: var(--cf-latte) !important; }
+
+        /* ===== Alerts ===== */
+        .alert-success {
+            background-color: #edf7ed !important;
+            color: #2d6a2d !important;
+            border-color: #a3d6a3 !important;
+        }
+        .alert-error {
+            background-color: #fdecea !important;
+            color: #8b0000 !important;
+            border-color: #f5a0a0 !important;
+        }
+
+        /* ===== Badges ===== */
+        .badge-ghost {
+            background-color: var(--cf-cream) !important;
+            color: var(--cf-dark) !important;
+            border-color: var(--cf-latte) !important;
+        }
+        .badge-error {
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border-color: #fca5a5 !important;
+        }
+        .badge-warning {
+            background-color: #fef3c7 !important;
+            color: var(--cf-accent) !important;
+            border-color: var(--cf-latte) !important;
+        }
+        .badge-neutral {
+            background-color: var(--cf-cream) !important;
+            color: var(--cf-medium) !important;
+        }
+
+        /* ===== Divider ===== */
+        .divider:before, .divider:after {
+            background-color: var(--cf-cream) !important;
+        }
+
+        /* ===== Helper Classes สำหรับ Views ===== */
+
+        /* หัวข้อหน้า */
+        .cf-page-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--cf-primary);
+        }
+        .cf-page-subtitle {
+            color: var(--cf-medium);
+            font-size: 0.875rem;
+            margin-top: 0.2rem;
+        }
+
+        /* Card header strip สีน้ำตาล */
+        .cf-card-header {
+            background-color: var(--cf-primary);
+            color: #fff;
+            border-radius: 10px 10px 0 0;
+            padding: 1rem 1.5rem;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        /* Stat card แบบ custom */
+        .cf-stat-card {
+            background: #fff;
+            border: 1px solid var(--cf-cream);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 2px 10px rgba(111,78,55,0.07);
+        }
+        .cf-stat-card .cf-stat-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--cf-medium);
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+        .cf-stat-card .cf-stat-value {
+            font-family: 'Inter', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--cf-primary);
+            line-height: 1;
+        }
+        .cf-stat-card .cf-stat-desc {
+            font-size: 0.78rem;
+            color: var(--cf-latte);
+            margin-top: 0.4rem;
+        }
+
+        /* Platform card ใน Home */
+        .cf-platform-card {
+            background: #fff;
+            border: 1px solid var(--cf-cream);
+            border-left: 4px solid var(--cf-primary);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 2px 10px rgba(111,78,55,0.07);
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .cf-platform-card:hover {
+            box-shadow: 0 6px 20px rgba(111,78,55,0.14);
+            transform: translateY(-2px);
+        }
+        .cf-platform-card h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--cf-primary);
+            margin-bottom: 0.5rem;
+        }
+        .cf-platform-card p {
+            font-size: 0.875rem;
+            color: var(--cf-medium);
+            line-height: 1.6;
+        }
+
+        /* ===== Footer ===== */
+        .cf-footer {
+            background-color: var(--cf-dark);
+            color: var(--cf-cream);
+            border-top: 3px solid var(--cf-latte);
+            text-align: center;
+            padding: 1.1rem 0;
+            font-size: 0.82rem;
+            letter-spacing: 0.04em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <div class="navbar cf-navbar px-4 sticky top-0 z-50">
+        <div class="flex-1">
+            <a class="btn btn-ghost cf-brand" asp-controller="Home" asp-action="Index">
+                Smart Cafe
+            </a>
+        </div>
+        <div class="flex-none">
+            @{
+                var roleId   = Context.Session.GetInt32("StaffRoleId");
+                var fullName = Context.Session.GetString("FullName");
+                var isLoggedIn      = roleId.HasValue;
+                var isAdmin         = roleId is 3 or 4 or 5;
+                var isStaff         = roleId is 1 or 2 or 3 or 4 or 5;
+                var canManageStaff  = roleId is 3 or 5;
+            }
+            <ul class="menu menu-horizontal gap-1 items-center">
+
+                @if (isLoggedIn)
+                {
+                    @if (isAdmin)
+                    {
+                        <li><a asp-controller="Admin" asp-action="Index">Dashboard</a></li>
+                    }
+                    @if (isStaff)
+                    {
+                        <li><a asp-controller="Pos" asp-action="Queue">POS Queue</a></li>
+                    }
+                    @if (canManageStaff)
+                    {
+                        <li>
+                            <details>
+                                <summary>จัดการระบบ</summary>
+                                <ul class="p-2">
+                                    <li><a asp-controller="Admin" asp-action="MenuList">รายการเมนู</a></li>
+                                    <li><a asp-controller="Admin" asp-action="Orders">รายการออเดอร์</a></li>
+                                    <li><a asp-controller="Account" asp-action="MemberList">รายชื่อสมาชิก</a></li>
+                                    <li><a asp-controller="Account" asp-action="AddStaff">เพิ่มพนักงาน</a></li>
+                                </ul>
+                            </details>
+                        </li>
+                    }
+                    <li>
+                        <span class="px-2 text-sm font-medium" style="color: var(--cf-latte);">
+                            @fullName
+                        </span>
+                    </li>
+                    <li>
+                        <a asp-controller="Account" asp-action="Logout"
+                           class="btn btn-sm"
+                           style="border: 1px solid var(--cf-latte); color: var(--cf-latte); background: transparent;">
+                            ออกจากระบบ
+                        </a>
+                    </li>
+                }
+                else
+                {
+                    <li><a asp-controller="Account" asp-action="Register">สมัครสมาชิก</a></li>
+                    <li>
+                        <a asp-controller="Account" asp-action="Login" class="btn btn-sm btn-primary">
+                            เข้าสู่ระบบ
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <!-- เนื้อหาหลัก -->
+    <main class="container mx-auto px-4 py-8 max-w-6xl" style="min-height: calc(100vh - 130px);">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success mb-4"><span>@TempData["Success"]</span></div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-error mb-4"><span>@TempData["Error"]</span></div>
+        }
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="cf-footer">
+        2569 Smart Cafe Management System — CSI402 T2 Y3
+    </footer>
+
+</body>
+</html>

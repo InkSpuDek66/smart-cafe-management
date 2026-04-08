@@ -1,0 +1,123 @@
+@* Views/Account/Login.cshtml *@
+@* ------------------------------------------------
+- หน้าเข้าสู่ระบบพนักงาน
+- ฟอร์มกรอกข้อมูล: Username, Password
+- แสดงข้อความผิดพลาดหากเข้าสู่ระบบไม่สำเร็จ
+- ใช้ Layout เดียวกับหน้าอื่นๆ ใน Account (เช่น Register) เพื่อความสอดคล้อง
+- URL เข้าถึง: /Account/Login
+- Method: POST (บันทึกข้อมูล)
+- ViewModel: LoginViewModel (มี properties: Username, Password)
+- Controller Action: AccountController.Login (POST)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "เข้าสู่ระบบพนักงาน";
+    Layout = "_CafeLayout";
+}
+
+<div class="min-h-[72vh] flex items-center justify-center">
+    <div class="w-full max-w-[420px] bg-white border border-[var(--cf-cream)] rounded-[14px] shadow-[0_8px_30px_rgba(111,78,55,0.12)] overflow-hidden">
+
+        <!-- Card Header -->
+        <div class="cf-card-header text-center py-6">
+            <p class="text-[0.72rem] uppercase tracking-[0.12em] text-[var(--cf-cream)] opacity-75 mb-[0.4rem] font-['Lato',sans-serif]">
+                Smart Cafe
+            </p>
+            เข้าสู่ระบบพนักงาน
+        </div>
+
+        <div class="px-7 pt-7 pb-8">
+
+            <p class="text-[0.85rem] text-[var(--cf-medium)] mb-6 text-center">
+                สำหรับพนักงานร้าน Smart Cafe เท่านั้น
+            </p>
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="alert alert-error mb-4">
+                    <span>@ViewBag.ErrorMessage</span>
+                </div>
+            }
+
+            <form method="post" asp-action="Login" asp-controller="Account">
+
+                <div class="form-control mb-4">
+                    <label class="label pb-1">
+                        <span class="label-text">ชื่อผู้ใช้</span>
+                    </label>
+                    <input type="text"
+                           asp-for="Username"
+                           class="input input-bordered w-full"
+                           placeholder="กรอกชื่อผู้ใช้"
+                           autocomplete="username"
+                           oninput="this.value=this.value.toLowerCase()"
+                           required />
+                </div>
+
+                <div class="form-control mb-4">
+                    <label class="label pb-1">
+                        <span class="label-text">รหัสผ่าน</span>
+                    </label>
+                    <div class="relative">
+                        <input type="password"
+                               id="passwordInput"
+                               asp-for="Password"
+                               class="input input-bordered w-full pr-11"
+                               placeholder="กรอกรหัสผ่าน"
+                               autocomplete="current-password"
+                               required />
+                        <!-- ปุ่มแสดง/ซ่อนรหัสผ่าน -->
+                        <button type="button"
+                                onclick="togglePassword()"
+                                tabindex="-1"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 p-0 leading-none">
+                            <!-- Eye icon — Heroicons outline (แสดงรหัสผ่าน) -->
+                            <svg id="eyeIcon" fill="none" viewBox="0 0 24 24"
+                                 stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <!-- X icon — Heroicons outline (ซ่อนรหัสผ่าน) -->
+                            <svg id="eyeOffIcon" fill="none" viewBox="0 0 24 24"
+                                 stroke-width="2" stroke="currentColor" class="w-5 h-5 hidden">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-control mb-6">
+                    <label class="label cursor-pointer justify-start gap-3">
+                        <input type="checkbox" asp-for="RememberMe" class="checkbox checkbox-sm" />
+                        <span class="text-sm text-[var(--cf-medium)]">จดจำการเข้าสู่ระบบ</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">เข้าสู่ระบบ</button>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        var input   = document.getElementById('passwordInput');
+        var eyeOn   = document.getElementById('eyeIcon');
+        var eyeOff  = document.getElementById('eyeOffIcon');
+        if (input.type === 'password') {
+            input.type   = 'text';
+            eyeOn.classList.add('hidden');
+            eyeOff.classList.remove('hidden');
+        } else {
+            input.type   = 'password';
+            eyeOn.classList.remove('hidden');
+            eyeOff.classList.add('hidden');
+        }
+    }
+</script>

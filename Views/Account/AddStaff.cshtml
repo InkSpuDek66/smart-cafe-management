@@ -1,0 +1,93 @@
+@* Views/Account/AddStaff.cshtml *@
+@* ------------------------------------------------
+- หน้าเพิ่มพนักงานใหม่ (สำหรับ Admin เท่านั้น)
+- ฟอร์มกรอกข้อมูล: ชื่อ, นามสกุล, Username, รหัสผ่าน, ตำแหน่ง (ดึงจาก StaffRole ในฐานข้อมูล)
+- แสดงข้อความผิดพลาดหรือสำเร็จหลังบันทึก
+- หลังบันทึกสำเร็จให้เคลียร์ฟอร์มและแสดงข้อความ "เพิ่มพนักงานสำเร็จ"
+- ใช้ Layout เดียวกับหน้าอื่นๆ ใน Account (เช่น Login, Register) เพื่อความสอดคล้อง
+- ตรวจสอบสิทธิ์การเข้าถึง: เฉพาะผู้ที่มี StaffRoleId = 5 (Owner) เท่านั้นที่สามารถเข้าถึงหน้านี้ได้
+- URL เข้าถึง: /Account/AddStaff
+- Method: GET (แสดงฟอร์ม), POST (บันทึกข้อมูล)
+- ViewModel: StaffViewModel (มี properties: FirstName, LastName, Username, Password, StaffRoleId)
+- Controller Action: AccountController.AddStaff (GET/POST)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.StaffViewModel
+@{
+    ViewData["Title"] = "เพิ่มพนักงาน";
+    Layout = "_CafeLayout";
+}
+
+<div class="flex items-start justify-center pt-4">
+    <div class="w-full max-w-[500px] bg-white border border-[var(--cf-cream)] rounded-[14px] shadow-[0_8px_30px_rgba(111,78,55,0.12)] overflow-hidden">
+
+        <div class="cf-card-header">เพิ่มพนักงาน</div>
+
+        <div class="p-7">
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="alert alert-error mb-4">
+                    <span>@ViewBag.ErrorMessage</span>
+                </div>
+            }
+            @if (ViewBag.SuccessMessage != null)
+            {
+                <div class="alert alert-success mb-4">
+                    <span>@ViewBag.SuccessMessage</span>
+                </div>
+            }
+
+            <form method="post" asp-action="AddStaff" asp-controller="Account">
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text">ชื่อ</span></label>
+                        <input type="text" asp-for="FirstName" class="input input-bordered" placeholder="ชื่อจริง" required />
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text">นามสกุล</span></label>
+                        <input type="text" asp-for="LastName" class="input input-bordered" placeholder="นามสกุล" required />
+                    </div>
+                </div>
+
+                <div class="form-control mb-4">
+                    <label class="label pb-1"><span class="label-text">Username</span></label>
+                    <input type="text"
+                           asp-for="Username"
+                           class="input input-bordered w-full"
+                           placeholder="ชื่อผู้ใช้สำหรับเข้าสู่ระบบ"
+                           autocomplete="off"
+                           required />
+                </div>
+
+                <div class="form-control mb-4">
+                    <label class="label pb-1"><span class="label-text">รหัสผ่าน</span></label>
+                    <input type="password"
+                           asp-for="Password"
+                           class="input input-bordered w-full"
+                           placeholder="ตั้งรหัสผ่าน"
+                           autocomplete="new-password"
+                           required />
+                </div>
+
+                <!-- ดึงตำแหน่งจาก StaffRole ในฐานข้อมูล -->
+                <div class="form-control mb-6">
+                    <label class="label pb-1"><span class="label-text">ตำแหน่ง</span></label>
+                    <select asp-for="StaffRoleId" class="select select-bordered w-full" required>
+                        <option value="">-- เลือกตำแหน่ง --</option>
+                        @foreach (var role in (ViewBag.Roles as List<Project_CSI402_T2_Y3.Models.Db.Staffrole>) ?? [])
+                        {
+                            <option value="@role.StaffRoleId">@role.RoleName</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" class="btn btn-primary">บันทึกพนักงาน</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>

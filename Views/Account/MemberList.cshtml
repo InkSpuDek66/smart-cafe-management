@@ -1,0 +1,73 @@
+@* Views/Account/MemberList.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงรายชื่อสมาชิกทั้งหมด (สำหรับ Staff และ Admin)
+- แสดงข้อมูล: รหัสสมาชิก, ชื่อ, นามสกุล, เบอร์โทร, แต้มสะสม, แสตมป์, วันเกิด
+- ใช้ Layout เดียวกับหน้าอื่นๆ ใน Account (เช่น Register, Login) เพื่อความสอดคล้อง
+- URL เข้าถึง: /Account/MemberList
+- Method: GET
+- ViewModel: List<Member> (ส่งมาจาก Controller)
+- Controller Action: AccountController.MemberList (GET)
+------------------------------------------------ *@
+
+@model List<Project_CSI402_T2_Y3.Models.Db.Member>
+@{
+    ViewData["Title"] = "รายชื่อสมาชิก";
+    Layout = "_CafeLayout";
+}
+
+<div class="bg-white border border-[var(--cf-cream)] rounded-[14px] overflow-hidden shadow-[0_4px_20px_rgba(111,78,55,0.09)]">
+
+    <!-- Card Header — ไม่มีปุ่ม "เพิ่มสมาชิก" เพราะ Staff ไม่มีสิทธิ์เพิ่ม Member -->
+    <div class="cf-card-header">
+        <span>รายชื่อสมาชิก</span>
+    </div>
+
+    <div class="px-6 pt-5 pb-6">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr>
+                        <th>รหัสสมาชิก</th>
+                        <th>ชื่อ</th>
+                        <th>นามสกุล</th>
+                        <th>เบอร์โทร</th>
+                        <th class="text-center">แต้มสะสม</th>
+                        <th class="text-center">Stamp</th>
+                        <th>วันเกิด</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var member in Model)
+                    {
+                        <tr>
+                            <td class="font-mono font-semibold text-[var(--cf-primary)]">
+                                @member.MemberId
+                            </td>
+                            <td>@member.FirstName</td>
+                            <td>@member.LastName</td>
+                            <td class="text-[var(--cf-medium)]">@member.Phone</td>
+                            <td class="text-center">
+                                <span class="font-bold text-[var(--cf-primary)]">@(member.Points ?? 0)</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="text-[var(--cf-medium)]">@(member.StampBalance ?? 0)</span>
+                            </td>
+                            <td class="text-[var(--cf-medium)] text-sm">
+                                @member.BirthDate?.ToString("dd/MM/yyyy")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="7"
+                            class="text-right text-[0.8rem] text-[var(--cf-medium)] pt-3">
+                            สมาชิกทั้งหมด: <strong>@Model.Count</strong> คน
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>

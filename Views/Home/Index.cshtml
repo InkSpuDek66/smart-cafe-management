@@ -1,0 +1,183 @@
+@* Views/Home/Index.cshtml *@
+@* ------------------------------------------------
+- หน้าหลักของระบบ
+- แสดงข้อมูลสรุปเกี่ยวกับระบบ
+- URL เข้าถึง: /
+- Method: GET
+- ViewModel: None
+- Controller Action: HomeController.Index (GET)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "หน้าหลัก";
+    int memberCount   = ViewBag.MemberCount   ?? 0;
+    int menuItemCount = ViewBag.MenuItemCount ?? 0;
+    int staffCount    = ViewBag.StaffCount    ?? 0;
+    var staffId       = Context.Session.GetInt32("StaffId");
+    var roleId        = Context.Session.GetInt32("StaffRoleId");
+}
+
+<!-- Hero Section — เก็บ linear-gradient เพราะ Tailwind ไม่รองรับ -->
+<div class="rounded-2xl mb-8 py-14 px-8 text-center border border-[#C8A97E]"
+     style="background:linear-gradient(135deg,#EFE0C9 0%,#FDF6EC 100%);">
+    <p class="text-xs uppercase tracking-[0.15em] text-[#C8A97E] font-bold mb-3">
+        Smart Cafe Management System
+    </p>
+    <h1 class="font-['Playfair_Display'] text-[2.8rem] font-bold text-[#3E2723] leading-snug mb-4">
+        ระบบบริหารจัดการ<br>ร้านกาแฟแบบครบวงจร
+    </h1>
+    <p class="text-[#8D6748] text-base max-w-[540px] mx-auto mb-8 leading-relaxed">
+        รองรับการสั่งอาหารผ่าน QR Code การจัดการสต็อก การชำระเงิน
+        และรายงานการขายแบบ Real-time
+    </p>
+    <div class="flex gap-3 justify-center flex-wrap">
+        <a asp-controller="Menu" asp-action="Index" class="btn btn-primary">ดูเมนูอาหาร</a>
+        @if (staffId == null)
+        {
+            <a asp-controller="Account" asp-action="Login" class="btn btn-outline">เข้าสู่ระบบพนักงาน</a>
+        }
+        else
+        {
+            <a asp-controller="Home" asp-action="Dashboard" class="btn btn-outline">ไปยัง Dashboard</a>
+        }
+    </div>
+</div>
+
+<!-- Stats Summary -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">สมาชิกทั้งหมด</div>
+        <div class="cf-stat-value">@memberCount</div>
+        <div class="cf-stat-desc">ผู้สมัครสะสมแต้ม</div>
+    </div>
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">รายการเมนู</div>
+        <div class="cf-stat-value">@menuItemCount</div>
+        <div class="cf-stat-desc">เมนูในระบบทั้งหมด</div>
+    </div>
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">พนักงานที่ใช้งาน</div>
+        <div class="cf-stat-value">@staffCount</div>
+        <div class="cf-stat-desc">พนักงานที่ทำงานอยู่</div>
+    </div>
+</div>
+
+<!-- Platform Cards -->
+<h2 class="font-['Playfair_Display'] text-[1.4rem] font-bold text-[#6F4E37] mb-4">แพลตฟอร์มในระบบ</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+
+    <div class="cf-platform-card">
+        <h3>Mobile Web App (PWA)</h3>
+        <p>ลูกค้าสั่งอาหารโดยสแกน QR Code ที่โต๊ะ รองรับทั้งสมาชิกและลูกค้าทั่วไป สะสมแต้มและใช้แสตมป์ได้</p>
+        <div class="mt-4">
+            <a asp-controller="Menu" asp-action="Index" class="btn btn-sm btn-outline">ดูเมนู</a>
+        </div>
+    </div>
+
+    <div class="cf-platform-card">
+        <h3>POS Tablet</h3>
+        <p>พนักงาน Cashier และ Barista ใช้งาน รับออเดอร์ ตรวจสอบสลิป และจัดการคิวการผลิตผ่าน KDS</p>
+        <div class="mt-4">
+            @if (staffId != null)
+            {
+                <a asp-controller="Home" asp-action="Dashboard" class="btn btn-sm btn-outline">Dashboard</a>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn btn-sm btn-outline">Login พนักงาน</a>
+            }
+        </div>
+    </div>
+
+    <div class="cf-platform-card">
+        <h3>Web Admin</h3>
+        <p>Manager, Finance และ Owner จัดการหลังบ้าน ดูรายงาน จัดการสต็อก เมนู และพนักงาน</p>
+        <div class="mt-4">
+            <a asp-controller="Account" asp-action="MemberList" class="btn btn-sm btn-outline">จัดการสมาชิก</a>
+        </div>
+    </div>
+
+    <div class="cf-platform-card border-l-[#C8A97E]">
+        <h3 class="text-[#8D6748]">Public Screen (TV)</h3>
+        <p>จอแสดงเลขคิวแบบ Real-time สำหรับลูกค้า อัปเดตอัตโนมัติผ่าน SignalR เมื่อออเดอร์พร้อมเสิร์ฟ</p>
+        <div class="mt-4">
+            <span class="text-xs text-[#C8A97E] font-bold uppercase tracking-widest">Coming Soon</span>
+        </div>
+    </div>
+
+</div>
+
+<!-- Demo Quick Start Panel -->
+<div class="bg-white border-[1.5px] border-[#EFE0C9] rounded-xl p-6 mb-6">
+    <h2 class="font-['Playfair_Display'] text-[1.2rem] font-bold text-[#6F4E37] mb-4">เริ่มต้นใช้งาน Demo</h2>
+    <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+
+        <!-- Admin Flow -->
+        <div class="border border-gray-200 rounded-lg p-4">
+            <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Admin / Staff</div>
+            <div class="flex flex-col gap-2">
+                @if (staffId == null)
+                {
+                    <a asp-controller="Admin" asp-action="Setup"
+                       class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
+                        1. ตั้งค่าบัญชีแรก (Setup)
+                    </a>
+                    <a asp-controller="Account" asp-action="Login"
+                       class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
+                        2. Login พนักงาน
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="Admin" asp-action="Index"
+                       class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
+                        Dashboard
+                    </a>
+                    <a asp-controller="Admin" asp-action="MenuCreate"
+                       class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
+                        เพิ่มเมนูสินค้า
+                    </a>
+                    <a asp-controller="Admin" asp-action="Payments"
+                       class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
+                        ตรวจสอบสลิป
+                    </a>
+                }
+            </div>
+        </div>
+
+        <!-- Customer Flow -->
+        <div class="border border-gray-200 rounded-lg p-4">
+            <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">ลูกค้า (จำลองสแกน QR)</div>
+            <div class="flex flex-col gap-2">
+                <a href="/Customer/Menu?table=T01"
+                   class="btn btn-sm bg-green-600 text-white border-none font-bold">
+                    โต๊ะ T01 — สั่งอาหาร
+                </a>
+                <a href="/Customer/Menu?table=T02"
+                   class="btn btn-sm btn-outline border-green-600 text-green-600">
+                    โต๊ะ T02 — สั่งอาหาร
+                </a>
+                <a asp-controller="Account" asp-action="Register"
+                   class="btn btn-sm btn-outline border-gray-400 text-gray-500">
+                    สมัครสมาชิก
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Quick Actions — แสดงเฉพาะเมื่อ Login แล้ว -->
+@if (staffId != null)
+{
+    <h2 class="font-['Playfair_Display'] text-[1.4rem] font-bold text-[#6F4E37] mb-4">การดำเนินการด่วน</h2>
+    <div class="flex flex-wrap gap-2">
+        <a asp-controller="Account" asp-action="Register" class="btn btn-sm btn-primary">เพิ่มสมาชิก</a>
+        <a asp-controller="Account" asp-action="MemberList" class="btn btn-sm btn-outline">รายชื่อสมาชิก</a>
+        @if (roleId is 3 or 5)
+        {
+            <a asp-controller="Account" asp-action="AddStaff" class="btn btn-sm btn-outline">เพิ่มพนักงาน</a>
+            <a asp-controller="Admin" asp-action="Index" class="btn btn-sm btn-outline">ดู Dashboard</a>
+        }
+    </div>
+}

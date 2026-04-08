@@ -1,0 +1,25 @@
+## ASP.NET Core + Visual Studio
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+## Build output (regenerate ได้ด้วย dotnet build)
+bin/
+obj/
+
+## OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Rider / JetBrains
+.idea/
+
+## VS Code
+.vscode/
+
+## Logs
+*.log
+logs/

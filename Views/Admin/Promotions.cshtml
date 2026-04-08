@@ -1,0 +1,178 @@
+@* Views/Admin/Promotions.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงรายการโปรโมชั่น (สำหรับ Admin)
+- แสดงข้อมูล: ชื่อโปรโมชั่น, ประเภทเงื่อนไข, ค่าเงื่อนไข
+- ปุ่มจัดการ: แก้ไข, ลบ
+- URL เข้าถึง: /Admin/Promotions
+- Method: GET (แสดงรายการโปรโมชั่น)
+- ViewModel: List<Project_CSI402_T2_Y3.Models.Db.Promotion>
+- Controller Action: AdminController.Promotions (GET)
+------------------------------------------------ *@
+
+@model List<Project_CSI402_T2_Y3.Models.Db.Promotion>
+@{
+    ViewData["Title"] = "โปรโมชั่น";
+    Layout = "_AdminLayout";
+    var promoUsage = ViewBag.PromoUsage as Dictionary<int, int> ?? new Dictionary<int, int>();
+}
+
+<div class="flex items-center justify-between mb-4">
+    <h1 class="font-['Inter'] text-2xl font-bold text-[#6F4E37]">
+        โปรโมชั่น
+    </h1>
+    <button type="button"
+            onclick="document.getElementById('addPromoPanel').style.display = document.getElementById('addPromoPanel').style.display === 'none' ? 'block' : 'none'"
+            class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
+        + เพิ่มโปรโมชั่น
+    </button>
+</div>
+
+
+<!-- ===== ฟอร์มเพิ่มโปรโมชั่นใหม่ (ซ่อนไว้) ===== -->
+<div id="addPromoPanel" class="hidden mb-6">
+    <div class="admin-card">
+        <div class="admin-card-header">เพิ่มโปรโมชั่นใหม่</div>
+        <div class="admin-card-body">
+            <form asp-controller="Admin" asp-action="AddPromotion" method="post"
+                  class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+                <div>
+                    <label class="block text-xs font-bold text-[#6F4E37] mb-1">ชื่อโปรโมชั่น *</label>
+                    <input type="text" name="promotionName" required placeholder="เช่น สะสมแต้ม"
+                           class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-[#6F4E37] mb-1">ConditionType</label>
+                    <select name="conditionType"
+                            class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none">
+                        <option value="">อัตโนมัติ</option>
+                        <option value="MinAmount">ยอดขั้นต่ำ</option>
+                        <option value="StampCount">จำนวนสแตมป์</option>
+                        <option value="Birthday">วันเกิด</option>
+                        <option value="GroupCheckin">เช็กอินกลุ่ม</option>
+                        <option value="Seasonal">ฤดูกาล</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-[#6F4E37] mb-1">ConditionValue</label>
+                    <input type="text" name="conditionValue" placeholder="เช่น 300"
+                           class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-[#6F4E37] mb-1">RewardType</label>
+                    <input type="text" name="rewardType" placeholder="เช่น FreeCookie"
+                           class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-[#6F4E37] mb-1">RewardValue</label>
+                    <input type="text" name="rewardValue" placeholder="เช่น 1 ชิ้น"
+                           class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-[#6F4E37] mb-1">วันเริ่มต้น</label>
+                    <input type="date" name="startDate"
+                           class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-[#6F4E37] mb-1">วันสิ้นสุด</label>
+                    <input type="date" name="endDate"
+                           class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+                </div>
+                <div class="flex items-end">
+                    <button type="submit"
+                            class="btn btn-sm w-full bg-green-600 text-white border-none font-bold">
+                        บันทึก
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ตารางโปรโมชั่น ===== -->
+<div class="admin-card">
+    <div class="admin-card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="p-8 text-center text-gray-400 text-sm">
+                ยังไม่มีโปรโมชั่นในระบบ
+            </div>
+        }
+        else
+        {
+            <table class="table table-zebra w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b-2 border-gray-200">
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">โปรโมชั่น</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">เงื่อนไข</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">รางวัล</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">ช่วงเวลา</th>
+                        <th class="px-3 py-2 text-center font-bold text-gray-500 text-xs uppercase">สถานะ</th>
+                        <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">ใช้งาน</th>
+                        <th class="px-3 py-2 text-center font-bold text-gray-500 text-xs uppercase">Toggle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        bool isActive = p.IsActive == (ulong)1;
+                        <tr class="border-b border-gray-100 @(!isActive ? "opacity-50" : "")">
+                            <td class="px-3 py-2">
+                                <div class="font-bold text-gray-800">@p.PromotionName</div>
+                                <div class="text-xs text-gray-400">Type: @(p.ConditionType ?? "Auto")</div>
+                            </td>
+                            <td class="px-3 py-2 text-gray-500">
+                                @(p.ConditionType ?? "—")
+                                @if (!string.IsNullOrEmpty(p.ConditionValue))
+                                {
+                                    <span> = @p.ConditionValue</span>
+                                }
+                            </td>
+                            <td class="px-3 py-2 text-gray-500">
+                                @(p.RewardType ?? "—")
+                                @if (!string.IsNullOrEmpty(p.RewardValue))
+                                {
+                                    <span>: @p.RewardValue</span>
+                                }
+                            </td>
+                            <td class="px-3 py-2 text-xs text-gray-500">
+                                @if (p.StartDate.HasValue || p.EndDate.HasValue)
+                                {
+                                    @(p.StartDate?.ToString("dd/MM/yy") ?? "—")
+                                    <span> - </span>
+                                    @(p.EndDate?.ToString("dd/MM/yy") ?? "—")
+                                }
+                                else
+                                {
+                                    <span>ไม่จำกัดเวลา</span>
+                                }
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="text-xs font-bold @(isActive ? "text-green-600" : "text-gray-400")">
+                                    @(isActive ? "เปิดใช้งาน" : "ปิดใช้งาน")
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 text-right">
+                                @{
+                                    int usage = promoUsage.GetValueOrDefault(p.PromotionId, 0);
+                                }
+                                <span class="text-sm font-bold text-[#6F4E37]">@usage</span>
+                                <div class="text-xs text-gray-400">ครั้ง</div>
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <form asp-controller="Admin" asp-action="TogglePromotion" method="post"
+                                      class="inline">
+                                    <input type="hidden" name="promotionId" value="@p.PromotionId" />
+                                    <!-- ปุ่มสีแดง=ปิด, สีเขียว=เปิด ตามสถานะปัจจุบัน -->
+                                    <button type="submit"
+                                            class="btn btn-xs @(isActive ? "btn-error" : "btn-success") font-bold">
+                                        @(isActive ? "ปิด" : "เปิด")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

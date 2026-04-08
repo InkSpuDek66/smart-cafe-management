@@ -1,0 +1,240 @@
+@* Views/Customer/Detail.cshtml *@
+@* ------------------------------------------------
+- หน้ารายละเอียดสินค้า (สำหรับลูกค้า)
+- แสดงข้อมูลสินค้า: รูปภาพ, ชื่อ, ราคา, คำอธิบาย, ตัวเลือก (ระดับความหวาน, ประเภทนม, ขนาด)
+- ฟอร์มเพิ่มสินค้าลงตะกร้า
+- URL เข้าถึง: /Customer/Detail/{menuItemId}
+- Method: GET (แสดงหน้า), POST (เพิ่มลงตะกร้า)
+- ViewModel: MenuDetailViewModel (ส่งมาจาก Controller)
+- Controller Action: CustomerController.Detail (GET), CustomerController.AddToCart (POST)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.MenuDetailViewModel
+@{
+    ViewData["Title"] = Model.Item.MenuName;
+    Layout = "_MobileLayout";
+    var item = Model.Item;
+}
+
+<!-- ปุ่มกลับ -->
+<div class="px-4 pt-3">
+    <a href="@Url.Action("Menu", "Customer", new { table = Model.TableNumber })"
+       class="inline-flex items-center gap-1 text-[#6F4E37] text-sm font-bold no-underline">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        กลับ
+    </a>
+</div>
+
+<!-- รูปสินค้าใหญ่ -->
+<div class="relative mt-2">
+    @if (!string.IsNullOrEmpty(item.ImageUrl))
+    {
+        <img src="@item.ImageUrl" alt="@item.MenuName"
+             class="w-full object-cover"
+             style="aspect-ratio:4/3;"
+             onerror="this.src='https://placehold.co/600x400/EFE0C9/6F4E37?text=No+Image'" />
+    }
+    else
+    {
+        <img src="https://placehold.co/600x400/EFE0C9/6F4E37?text=@Uri.EscapeDataString(item.MenuName ?? "Menu")"
+             alt="@item.MenuName" class="w-full object-cover" style="aspect-ratio:4/3;" />
+    }
+
+    <!-- Badge Seasonal (ซ้อนทับบนรูป) -->
+    @if (item.IsSeasonal == (ulong)1)
+    {
+        <span class="absolute top-3 right-3 bg-amber-400 text-white text-[0.72rem] font-bold px-2.5 py-1 rounded-full">
+            ฤดูกาล
+        </span>
+    }
+</div>
+
+<!-- ข้อมูลสินค้า + ฟอร์มเพิ่มตะกร้า -->
+<div class="bg-white rounded-t-2xl -mt-3 relative px-4 pt-5 pb-6">
+
+    <!-- ชื่อและราคา -->
+    <div class="flex justify-between items-start mb-2">
+        <div>
+            <h1 class="text-[1.2rem] font-bold text-[#3E2723] leading-snug">@item.MenuName</h1>
+            @if (!string.IsNullOrEmpty(item.Category))
+            {
+                <span class="text-xs text-[#8D6748] bg-[#EFE0C9] px-2 py-0.5 rounded-full">@item.Category</span>
+            }
+        </div>
+        <div class="font-['Inter'] tracking-tight text-2xl font-bold text-[#6F4E37] whitespace-nowrap ml-2">
+            ฿@item.Price?.ToString("N0")
+        </div>
+    </div>
+
+    <!-- คำอธิบาย -->
+    @if (!string.IsNullOrEmpty(item.MenuDescription))
+    {
+        <p class="text-sm text-gray-500 leading-relaxed mb-4">@item.MenuDescription</p>
+    }
+
+    <hr class="border-[#EFE0C9] my-3" />
+
+    <!-- ฟอร์มตัวเลือก -->
+    <form asp-action="AddToCart" asp-controller="Customer" method="post">
+        <input type="hidden" name="menuItemId" value="@item.MenuItemId" />
+
+        @if (Model.ShowDrinkOptions)
+        {
+            <!-- ===== ระดับความหวาน (เฉพาะเครื่องดื่ม) ===== -->
+            <div class="mb-4">
+                <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ระดับความหวาน</div>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach (var opt in Model.SweetnessOptions)
+                    {
+                        <label class="cursor-pointer">
+                            <input type="radio" name="sweetness" value="@opt" class="hidden"
+                                   @(opt == "หวานปกติ" ? "checked" : "") />
+                            <span class="option-chip @(opt == "หวานปกติ" ? "selected" : "")">@opt</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <!-- ===== ประเภทนม (เฉพาะเครื่องดื่ม) ===== -->
+            <div class="mb-4">
+                <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ประเภทนม</div>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach (var opt in Model.MilkOptions)
+                    {
+                        <label class="cursor-pointer">
+                            <input type="radio" name="milkType" value="@opt.Label" class="hidden"
+                                   data-price="@opt.PriceAdj"
+                                   @(opt.Label == "นมสด" ? "checked" : "") />
+                            <span class="option-chip @(opt.Label == "นมสด" ? "selected" : "")">@opt.Label</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <!-- ===== ขนาด (เฉพาะเครื่องดื่ม) ===== -->
+            <div class="mb-5">
+                <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ขนาด</div>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach (var opt in Model.SizeOptions)
+                    {
+                        <label class="cursor-pointer">
+                            <input type="radio" name="size" value="@opt.Label" class="hidden"
+                                   data-price="@opt.PriceAdj"
+                                   @(opt.Label.StartsWith("M") ? "checked" : "") />
+                            <span class="option-chip @(opt.Label.StartsWith("M") ? "selected" : "")">@opt.Label</span>
+                        </label>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- ไม่มีตัวเลือกสำหรับเบเกอรี่/ของทานเล่น -->
+            <div class="mb-4 bg-amber-50 rounded-xl px-4 py-3">
+                <p class="text-[0.8rem] text-amber-800">
+                    สินค้าประเภทนี้ไม่มีตัวเลือกเพิ่มเติม
+                </p>
+            </div>
+            <!-- ส่งค่า default ให้ Controller ไม่ error -->
+            <input type="hidden" name="sweetness" value="" />
+            <input type="hidden" name="milkType" value="" />
+            <input type="hidden" name="size" value="" />
+        }
+
+        <!-- Hidden field สำหรับราคาตัวเลือกที่ปรับ -->
+        <input type="hidden" name="optionPriceAdjustment" id="optionPriceAdj" value="0" />
+
+        <!-- ===== จำนวน ===== -->
+        <div class="flex items-center justify-between bg-[#FDF6EC] rounded-xl px-4 py-3 mb-5">
+            <span class="text-sm font-bold text-[#3E2723]">จำนวน</span>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="changeQty(-1)"
+                        class="w-8 h-8 rounded-full border-2 border-[#6F4E37] bg-transparent text-[#6F4E37] text-lg font-bold cursor-pointer flex items-center justify-center">
+                    -
+                </button>
+                <span id="qtyDisplay" class="text-[1.1rem] font-bold min-w-[24px] text-center">1</span>
+                <input type="hidden" name="quantity" id="qtyInput" value="1" />
+                <button type="button" onclick="changeQty(1)"
+                        class="w-8 h-8 rounded-full bg-[#6F4E37] text-white text-lg font-bold cursor-pointer flex items-center justify-center border-none">
+                    +
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== ราคารวมและปุ่มเพิ่มตะกร้า ===== -->
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <div class="text-[0.72rem] text-gray-400">ราคารวม</div>
+                <div id="totalDisplay" class="font-['Inter'] tracking-tight text-2xl font-bold text-[#6F4E37]">
+                    ฿@item.Price?.ToString("N0")
+                </div>
+            </div>
+            <button type="submit"
+                    class="flex-1 bg-[#6F4E37] text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer flex items-center justify-center gap-1.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                เพิ่มลงตะกร้า
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    /* Option chip — ยังคง custom class เพราะต้องตอบสนองกับ JS toggle */
+    .option-chip {
+        display: inline-block;
+        padding: 0.3rem 0.75rem;
+        border-radius: 20px;
+        border: 1.5px solid #C8A97E;
+        background: transparent;
+        color: #6F4E37;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.15s;
+    }
+    .option-chip.selected,
+    input[type="radio"]:checked + .option-chip {
+        background: #6F4E37;
+        color: #fff;
+        border-color: #6F4E37;
+    }
+</style>
+
+<script>
+    var basePrice = @(item.Price ?? 0);
+    var qty = 1;
+
+    // เมื่อเลือก Radio → อัปเดต Chip สีและคำนวณราคา
+    document.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('input[name="' + this.name + '"]').forEach(function(r) {
+                r.nextElementSibling.classList.remove('selected');
+            });
+            this.nextElementSibling.classList.add('selected');
+            calcTotal();
+        });
+    });
+
+    function calcTotal() {
+        var sizePrice = 0;
+        var milkPrice = 0;
+        var selectedSize = document.querySelector('input[name="size"]:checked');
+        var selectedMilk = document.querySelector('input[name="milkType"]:checked');
+        if (selectedSize) sizePrice = parseFloat(selectedSize.dataset.price) || 0;
+        if (selectedMilk) milkPrice = parseFloat(selectedMilk.dataset.price) || 0;
+        var adj = sizePrice + milkPrice;
+        document.getElementById('optionPriceAdj').value = adj;
+        var total = (basePrice + adj) * qty;
+        document.getElementById('totalDisplay').textContent = '฿' + total.toLocaleString('th-TH', {minimumFractionDigits:0});
+    }
+
+    function changeQty(delta) {
+        qty = Math.max(1, qty + delta);
+        document.getElementById('qtyDisplay').textContent = qty;
+        document.getElementById('qtyInput').value = qty;
+        calcTotal();
+    }
+</script>

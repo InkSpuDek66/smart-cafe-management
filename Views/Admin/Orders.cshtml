@@ -1,0 +1,140 @@
+@* Views/Admin/Orders.cshtml *@
+@model Project_CSI402_T2_Y3.ViewModels.AdminOrderViewModel
+@{
+    ViewData["Title"] = "รายการออเดอร์";
+    Layout = "_AdminLayout";
+
+    // ลำดับสถานะถัดไปที่กดได้ (ไม่สามารถย้อนกลับ)
+    (int nextId, string nextLabel)? NextStatus(int current) => current switch
+    {
+        2 => (3, "เริ่มทำ"),
+        3 => (4, "พร้อมเสิร์ฟ"),
+        4 => (5, "เสร็จสิ้น"),
+        _ => null
+    };
+}
+
+<!-- Filter Tabs -->
+<div class="flex gap-1 flex-wrap mb-4">
+    @{
+        var filters = new[] {
+            ("", "ทั้งหมด"),
+            ("1", "รอชำระ"),
+            ("2", "ชำระแล้ว"),
+            ("3", "กำลังทำ"),
+            ("4", "พร้อมเสิร์ฟ"),
+            ("5", "เสร็จสิ้น"),
+            ("6", "ยกเลิก")
+        };
+    }
+    @foreach (var f in filters)
+    {
+        var isActive = (Model.FilterStatus ?? "") == f.Item1;
+        <a href="@Url.Action("Orders", "Admin", new { status = f.Item1 })"
+           class="@(isActive ? "btn-cf-primary" : "btn-cf-outline") px-3 py-1 text-xs">
+            @f.Item2
+        </a>
+    }
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        ออเดอร์ (@Model.Orders.Count รายการ)
+    </div>
+    <div class="overflow-x-auto">
+        <table class="admin-table w-full border-collapse">
+            <thead>
+                <tr>
+                    <th>ออเดอร์</th>
+                    <th>โต๊ะ</th>
+                    <th>ลูกค้า</th>
+                    <th>รายการ</th>
+                    <th>ยอด</th>
+                    <th>คิว</th>
+                    <th>สถานะ</th>
+                    <th>เวลา</th>
+                    <th>ดำเนินการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in Model.Orders)
+                {
+                    var next = NextStatus(o.OrderStatusId);
+                    <tr>
+                        <td class="font-bold text-[#6F4E37]">#@o.OrderId</td>
+                        <td class="font-semibold">@(o.TableNumber ?? "—")</td>
+                        <td class="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap">
+                            @(o.CustomerName ?? "แขก")
+                        </td>
+                        <td class="text-center">@o.ItemCount</td>
+                        <td class="font-bold">฿@o.NetAmount.ToString("N0")</td>
+                        <td class="font-bold text-[#6F4E37] text-base">
+                            @(o.QueueNumber ?? "—")
+                        </td>
+                        <td>
+                            <span class="status-badge @o.StatusBadgeClass">@o.StatusNameTh</span>
+                        </td>
+                        <td class="text-xs text-gray-400 whitespace-nowrap">
+                            @o.CreatedAt?.ToString("HH:mm")
+                        </td>
+                        <td>
+                            @if (next.HasValue)
+                            {
+                                <!-- ปุ่มเดียว + confirm dialog — ไม่ต้องมี dropdown -->
+                                <button type="button"
+                                        class="btn-cf-primary px-3 py-1 text-xs"
+                                        onclick="confirmChangeStatus(@o.OrderId, @next.Value.nextId, '@next.Value.nextLabel', '@o.StatusNameTh')">
+                                    @next.Value.nextLabel
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="text-xs text-gray-400">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Orders.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-gray-400 py-10">ไม่พบออเดอร์</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Confirm -->
+<dialog id="confirm-modal" class="modal">
+    <div class="modal-box max-w-sm">
+        <h3 class="font-bold text-lg text-[#3E2723] mb-1">ยืนยันการเปลี่ยนสถานะ</h3>
+        <p id="confirm-msg" class="text-sm text-gray-600 mb-4"></p>
+        <div class="flex gap-2 justify-end">
+            <button type="button" onclick="document.getElementById('confirm-modal').close()"
+                    class="btn-cf-outline px-4 py-2 text-sm">
+                ยกเลิก
+            </button>
+            <form id="confirm-form" asp-action="UpdateOrderStatus" asp-controller="Admin" method="post">
+                <input type="hidden" id="confirm-orderId" name="orderId" />
+                <input type="hidden" id="confirm-statusId" name="newStatusId" />
+                <button type="submit" class="btn-cf-primary px-4 py-2 text-sm">
+                    ยืนยัน
+                </button>
+            </form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+
+<script>
+    function confirmChangeStatus(orderId, newStatusId, newLabel, currentLabel) {
+        document.getElementById('confirm-orderId').value = orderId;
+        document.getElementById('confirm-statusId').value = newStatusId;
+        document.getElementById('confirm-msg').textContent =
+            'ออเดอร์ #' + orderId + ' — เปลี่ยนจาก "' + currentLabel + '" เป็น "' + newLabel + '"';
+        document.getElementById('confirm-modal').showModal();
+    }
+</script>

@@ -1,0 +1,137 @@
+@* Views/Admin/Tables.cshtml *@
+@model List<Project_CSI402_T2_Y3.Models.Db.Table>
+@{
+    ViewData["Title"] = "จัดการโต๊ะ / QR Code";
+    Layout = "_AdminLayout";
+    int lastTableId = (int)(ViewBag.LastTableId ?? 0);
+}
+
+<div class="flex items-center justify-between mb-4">
+    <h1 class="font-['Inter'] text-2xl font-bold text-[#6F4E37]">
+        จัดการโต๊ะ / QR Code
+    </h1>
+    <a asp-controller="Admin" asp-action="QrPrint"
+       class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold no-underline">
+        Print QR ทั้งหมด
+    </a>
+</div>
+
+<div class="grid gap-6 items-start [grid-template-columns:280px_1fr]">
+
+    <!-- ===== ปุ่มเพิ่ม / ลบโต๊ะ ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">จัดการจำนวนโต๊ะ</div>
+        <div class="admin-card-body flex flex-col gap-3">
+            <p class="text-xs text-gray-400">
+                ระบบสร้างหมายเลขโต๊ะถัดไปให้อัตโนมัติ (T01, T02, ...)
+            </p>
+
+            <!-- เพิ่มโต๊ะ -->
+            <form asp-controller="Admin" asp-action="AddTable" method="post">
+                <button type="submit"
+                        class="btn btn-sm w-full bg-[#6F4E37] text-white border-none font-bold">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    เพิ่มโต๊ะ
+                </button>
+            </form>
+
+            <!-- ลบโต๊ะ (เฉพาะโต๊ะหมายเลขสูงสุด) -->
+            @if (Model.Any())
+            {
+                var lastTable = Model
+                    .OrderByDescending(t => {
+                        string d = new string(t.TableNumber!.Where(char.IsDigit).ToArray());
+                        return int.TryParse(d, out int n) ? n : 0;
+                    })
+                    .First();
+
+                <form asp-controller="Admin" asp-action="DeleteTable" method="post"
+                      onsubmit="return confirm('ลบโต๊ะ @lastTable.TableNumber?\nการดำเนินการนี้ไม่สามารถย้อนกลับได้')">
+                    <input type="hidden" name="tableId" value="@lastTable.TableId" />
+                    <button type="submit"
+                            class="btn btn-sm w-full btn-error text-white border-none font-bold">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                             stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        ลบโต๊ะ @lastTable.TableNumber
+                    </button>
+                </form>
+                <p class="text-[0.7rem] text-gray-400 text-center -mt-1">
+                    ลบได้เฉพาะโต๊ะหมายเลขสูงสุดเท่านั้น
+                </p>
+            }
+        </div>
+    </div>
+
+    <!-- ===== รายการโต๊ะ ===== -->
+    <div class="admin-card">
+        <div class="admin-card-header">โต๊ะทั้งหมด (@Model.Count โต๊ะ)</div>
+        <div class="admin-card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="p-8 text-center text-gray-400 text-sm">
+                    ยังไม่มีโต๊ะในระบบ
+                </div>
+            }
+            else
+            {
+                <table class="table table-zebra w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th>หมายเลขโต๊ะ</th>
+                            <th class="text-center">สถานะ</th>
+                            <th>QR URL</th>
+                            <th class="text-center">QR Print</th>
+                            <th class="text-center">เปลี่ยนสถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            string qrUrl = $"/Customer/Menu?table={t.TableNumber}";
+                            bool isActive = t.IsActive == (ulong)1;
+                            <tr>
+                                <td class="font-bold text-gray-800 text-base">@t.TableNumber</td>
+                                <td class="text-center">
+                                    @if (isActive)
+                                    {
+                                        <span class="badge badge-success text-xs font-bold">เปิดใช้งาน</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-error text-xs font-bold">ปิดใช้งาน</span>
+                                    }
+                                </td>
+                                <td class="text-xs text-gray-500 font-mono">@qrUrl</td>
+                                <td class="text-center">
+                                    <a asp-controller="Admin" asp-action="QrPrint"
+                                       asp-route-tableId="@t.TableId"
+                                       class="btn btn-xs border border-[#d9c9b6] text-[#6F4E37] font-bold no-underline bg-white">
+                                        Print
+                                    </a>
+                                </td>
+                                <td class="text-center">
+                                    <!-- ปุ่มสลับสถานะ เปิด/ปิด -->
+                                    <form asp-controller="Admin" asp-action="ToggleTableStatus" method="post"
+                                          class="inline">
+                                        <input type="hidden" name="tableId" value="@t.TableId" />
+                                        <button type="submit"
+                                                class="btn btn-xs font-bold @(isActive ? "btn-outline btn-error" : "btn-outline btn-success")">
+                                            @(isActive ? "ปิดใช้งาน" : "เปิดใช้งาน")
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>

@@ -1,0 +1,140 @@
+@* Views/Customer/Menu.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงเมนูอาหาร (สำหรับลูกค้า)
+- แสดงรายการเมนูทั้งหมดหรือแยกตามหมวดหมู่
+- ปุ่มสำหรับเลือกเมนูและดูรายละเอียด
+- URL เข้าถึง: /Customer/Menu
+- Method: GET
+- ViewModel: List<MenuItem> (ส่งมาจาก Controller)
+- Controller Action: CustomerController.Menu (GET)
+------------------------------------------------ *@
+
+@model List<Project_CSI402_T2_Y3.Models.Db.Menuitem>
+@{
+    ViewData["Title"] = "เมนูอาหาร";
+    Layout = "_MobileLayout";
+    var selectedCat = ViewBag.SelectedCategory as string ?? "All";
+    var categories  = ViewBag.Categories as List<string> ?? new();
+    var tableNumber = ViewBag.TableNumber as string;
+
+    // แปลงชื่อหมวดหมู่ภาษาอังกฤษเป็นภาษาไทย
+    var catThaiNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Coffee",     "กาแฟ" },
+        { "Non-Coffee", "เครื่องดื่มอื่น" },
+        { "Bakery",     "เบเกอรี่" },
+        { "Snack",      "ของทานเล่น" },
+        { "Food",       "อาหาร" },
+        { "Tea",        "ชา" },
+        { "Seasonal",   "เมนูตามฤดูกาล" },
+        { "Drink",      "เครื่องดื่ม" }
+    };
+    string CatTh(string c) => catThaiNames.TryGetValue(c, out var t) ? t : c;
+}
+
+<!-- Category Filter Bar -->
+<div class="category-filter">
+    <a href="@Url.Action("Menu", "Customer", new { table = tableNumber })"
+       class="cat-btn @(selectedCat == "All" ? "active" : "")">ทั้งหมด</a>
+
+    @foreach (var cat in categories)
+    {
+        <a href="@Url.Action("Menu", "Customer", new { category = cat, table = tableNumber })"
+           class="cat-btn @(selectedCat == cat ? "active" : "")">@CatTh(cat)</a>
+    }
+</div>
+
+<!-- Welcome Banner (แสดงเฉพาะครั้งแรก) -->
+@if (!string.IsNullOrEmpty(tableNumber))
+{
+    <div class="mx-4 mb-2 px-4 py-3 rounded-xl text-white"
+         style="background:linear-gradient(135deg,#6F4E37,#8D6748);">
+        <div class="text-xs opacity-80">ยินดีต้อนรับ</div>
+        <div class="font-bold text-base">โต๊ะ @tableNumber — สั่งอาหารได้เลย</div>
+    </div>
+}
+
+<!-- Member Points/Stamps Header (แสดงเฉพาะสมาชิกที่ระบุตัวตนแล้ว) -->
+@if (ViewBag.MemberName != null)
+{
+    <div class="mx-4 mb-3 px-4 py-3 rounded-xl border-[1.5px] border-yellow-300"
+         style="background:linear-gradient(135deg,#fefce8,#fef3c7);">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-[0.7rem] text-amber-800">สมาชิก</div>
+                <div class="font-bold text-[0.9rem] text-amber-900">@ViewBag.MemberName</div>
+            </div>
+            <div class="flex gap-4">
+                <div class="text-center">
+                    <div class="text-[1.1rem] font-bold text-amber-600">@ViewBag.MemberPoints</div>
+                    <div class="text-[0.65rem] text-amber-800">แต้ม</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[1.1rem] font-bold text-amber-600">@ViewBag.MemberStamps</div>
+                    <div class="text-[0.65rem] text-amber-800">สแตมป์</div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Product Grid -->
+<div class="px-4 pb-4">
+    @if (!Model.Any())
+    {
+        <div class="text-center py-12 text-gray-400">
+            <!-- Search icon — Heroicons outline (ไม่พบเมนู) -->
+            <svg class="w-12 h-12 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+            </svg>
+            <p class="text-[0.9rem]">ไม่พบเมนูในหมวดนี้</p>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-2 gap-3 mt-1">
+            @foreach (var item in Model)
+            {
+                <a href="@Url.Action("Detail", "Customer", new { id = item.MenuItemId, table = tableNumber })"
+                   class="no-underline">
+                    <!-- การ์ดเมนู — เพิ่มกรอบพิเศษถ้าเป็น Seasonal -->
+                    <div class="product-card @(item.IsSeasonal == (ulong)1 ? "border-2 border-amber-400 shadow-[0_0_0_3px_#fef3c7]" : "")">
+                        <!-- รูปสินค้า -->
+                        @if (!string.IsNullOrEmpty(item.ImageUrl))
+                        {
+                            <img src="@item.ImageUrl" alt="@item.MenuName" loading="lazy"
+                                 onerror="this.src='https://placehold.co/400x300/EFE0C9/6F4E37?text=No+Image'" />
+                        }
+                        else
+                        {
+                            <img src="https://placehold.co/400x300/EFE0C9/6F4E37?text=@Uri.EscapeDataString(item.MenuName ?? "Menu")"
+                                 alt="@item.MenuName" loading="lazy" />
+                        }
+
+                        <!-- แถบ Seasonal badge (แสดงซ้อนทับบนรูป) -->
+                        @if (item.IsSeasonal == (ulong)1)
+                        {
+                            <div class="absolute top-1.5 left-1.5 text-white text-[0.6rem] font-bold px-1.5 py-0.5 rounded tracking-wide"
+                                 style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+                                ฤดูกาล
+                            </div>
+                        }
+
+                        <div class="card-body">
+                            <!-- ชื่อเมนู -->
+                            <span class="menu-name">@item.MenuName</span>
+                            <!-- ราคา -->
+                            <div class="menu-price">฿@item.Price?.ToString("N0")</div>
+                            <!-- หมวดหมู่ -->
+                            @if (!string.IsNullOrEmpty(item.Category))
+                            {
+                                <div class="text-[0.68rem] text-gray-400 mt-0.5">@item.Category</div>
+                            }
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</div>

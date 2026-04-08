@@ -1,0 +1,169 @@
+@* Views/Admin/QrPrint.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดง QR Code สำหรับแต่ละโต๊ะ (สำหรับ Admin)
+- แสดง QR Code ที่ลูกค้าสามารถสแกนเพื่อสั่งอาหารได้
+- ใช้ Google Charts API สร้าง QR Code แบบไดนามิกโดยไม่ต้องเก็บรูปในเซิร์ฟเวอร์
+- ข้อมูลที่เข้ารหัสใน QR คือ URL ที่นำไปสู่หน้าเมนูสำหรับโต๊ะนั้นๆ เช่น /Customer/Menu?table=1
+- ปุ่มสำหรับพิมพ์ QR Code และลิงก์กลับไปยังหน้าจัดการโต๊ะ
+- ใช้ Layout เป็น null เพราะเป็นหน้า Print เฉพาะ
+- URL เข้าถึง: /Admin/QrPrint
+- Method: GET
+- ViewModel: ไม่มี (ใช้ ViewBag ส่งข้อมูลโต๊ะและ Base URL)
+- Controller Action: AdminController.QrPrint (GET)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "Print QR Code";
+    Layout = null; // ไม่ใช้ Layout เพราะเป็นหน้า Print เฉพาะ
+    var tables     = ViewBag.Tables     as IEnumerable<Project_CSI402_T2_Y3.Models.Db.Table>;
+    var qrDataUrls = ViewBag.QrDataUrls as Dictionary<int, string> ?? new();
+}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QR Code — Print</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* บังคับ browser ไม่ให้ใช้ auto dark mode กับหน้านี้ */
+        :root { color-scheme: light; }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: #fff;
+            color: #1a1a1a;
+            padding: 1cm;
+        }
+
+        .print-header {
+            text-align: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #6F4E37;
+        }
+
+        .print-header h1 {
+            font-size: 1.4rem;
+            color: #6F4E37;
+            font-weight: 700;
+        }
+
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .qr-card {
+            border: 2px solid #d9c9b6;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            background: #fefaf6;
+            page-break-inside: avoid;
+        }
+
+        .qr-card img {
+            width: 140px;
+            height: 140px;
+            display: block;
+            margin: 0 auto 0.5rem;
+        }
+
+        .table-no {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #3E2723;
+            margin-bottom: 0.25rem;
+        }
+
+        .scan-hint {
+            font-size: 0.7rem;
+            color: #9ca3af;
+        }
+
+        .btn-print {
+            display: inline-block;
+            margin: 1rem auto;
+            background: #6F4E37;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .no-print { }
+
+        @@media print {
+            /* ซ่อนทุกอย่างยกเว้น QR grid */
+            .no-print   { display: none !important; }
+            .print-header { display: none !important; }
+            .scan-hint  { display: none !important; }
+
+            body { padding: 0.3cm; background: #fff; }
+
+            /* ปรับ card ให้กะทัดรัดสำหรับการพิมพ์ */
+            .qr-card {
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                padding: 0.5rem;
+                background: #fff !important;
+            }
+            .qr-card img {
+                width: 120px;
+                height: 120px;
+            }
+            .table-no {
+                font-size: 1.2rem;
+                color: #000;
+            }
+            .qr-grid { gap: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print" style="text-align:center;margin-bottom:1rem;">
+        <a href="/Admin/Tables" style="color:#6F4E37;font-size:0.875rem;font-weight:700;text-decoration:none;">← กลับ</a>
+        &nbsp;&nbsp;
+        <button class="btn-print" onclick="window.print()">Print QR Code</button>
+    </div>
+
+    <div class="print-header">
+        <h1>Smart Cafe — QR Code โต๊ะ</h1>
+        <p style="font-size:0.8rem;color:#9ca3af;margin-top:0.25rem;">สแกนเพื่อสั่งอาหาร</p>
+    </div>
+
+    <div class="qr-grid">
+        @if (tables != null)
+        {
+            @foreach (var t in tables)
+            {
+                // ดึง base64 data URL ที่สร้างไว้ใน Controller ด้วย QRCoder
+                string qrSrc = qrDataUrls.TryGetValue(t.TableId, out var src) ? src : "";
+
+                <div class="qr-card">
+                    @if (!string.IsNullOrEmpty(qrSrc))
+                    {
+                        <img src="@qrSrc" alt="QR โต๊ะ @t.TableNumber" />
+                    }
+                    else
+                    {
+                        <div style="width:140px;height:140px;display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;background:#f3f4f6;border-radius:8px;">
+                            <span style="font-size:0.7rem;color:#9ca3af;">ไม่สามารถสร้าง QR ได้</span>
+                        </div>
+                    }
+                    <div class="table-no">โต๊ะ @t.TableNumber</div>
+                    <div class="scan-hint">สแกนเพื่อสั่งอาหาร</div>
+                </div>
+            }
+        }
+    </div>
+
+</body>
+</html>

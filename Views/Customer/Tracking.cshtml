@@ -1,0 +1,310 @@
+@* Views/Customer/Tracking.cshtml *@
+@* ------------------------------------------------
+- หน้าติดตามออเดอร์ (สำหรับลูกค้า)
+- แสดงสถานะของออเดอร์ในแต่ละขั้นตอน
+- URL เข้าถึง: /Customer/Tracking/{orderId}
+- Method: GET
+- ViewModel: Order (ส่งมาจาก Controller)
+- Controller Action: CustomerController.Tracking (GET)
+------------------------------------------------ *@
+
+@using Project_CSI402_T2_Y3.Models.Db
+@{
+    ViewData["Title"] = "ติดตามออเดอร์";
+    Layout = "_MobileLayout";
+    var order        = ViewBag.Order as Order;
+    var payment      = ViewBag.Payment as Payment;
+    var items        = ViewBag.Items as dynamic;
+    var statusLabel  = ViewBag.StatusLabel as string ?? "ไม่ทราบ";
+    var statusId     = order?.OrderStatusId ?? 0;
+    var isMember     = (bool)(ViewBag.IsMember ?? false);
+    ViewBag.CartCount = 0;
+}
+
+<!-- ฝัง orderId ให้ SignalR client ใน _MobileLayout อ่านได้ -->
+@if (order != null)
+{
+    <meta name="current-order-id" content="@order.OrderId" />
+}
+
+<div class="p-4">
+
+    <!-- หัวข้อ -->
+    <h2 class="font-serif text-[1.25rem] font-bold text-[#3E2723] mb-1">
+        ติดตามออเดอร์
+    </h2>
+    <p class="text-[0.8rem] text-[#8D6748] mb-4">ออเดอร์ #@order?.OrderId</p>
+
+    <!-- QueueNumber (ถ้ามี) -->
+    @if (!string.IsNullOrEmpty(order?.QueueNumber))
+    {
+        <div class="text-white rounded-[14px] px-5 py-5 mb-4 text-center"
+             style="background:linear-gradient(135deg,#6F4E37,#3E2723);">
+            <div class="text-[0.8rem] opacity-75">หมายเลขคิวของคุณ</div>
+            <div class="font-serif text-[4rem] font-bold leading-none tracking-wide">
+                @order.QueueNumber
+            </div>
+            <div class="text-[0.8rem] opacity-75 mt-1">กรุณารอเรียกคิว</div>
+        </div>
+    }
+
+    <!-- Status Steps -->
+    <div class="bg-white rounded-xl border border-[#EFE0C9] px-5 py-5 mb-4">
+        <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-4">
+            สถานะออเดอร์
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="status-steps">
+            @{
+                // Step: Waiting(1)=รอตรวจสลิป, Paid(2)=ยืนยันแล้ว, Preparing(3)=กำลังทำ, Ready(4)=พร้อมรับ
+                var steps = new[]
+                {
+                    new { Id = 1, Label = "รอตรวจสลิป",  Sub = "อัปโหลดสลิปและรอพนักงานตรวจสอบ" },
+                    new { Id = 2, Label = "ยืนยันแล้ว",   Sub = "สลิปผ่านการตรวจสอบ เข้าคิวทำแล้ว" },
+                    new { Id = 3, Label = "กำลังทำ",      Sub = "บาริสต้ากำลังเตรียมออเดอร์ของคุณ" },
+                    new { Id = 4, Label = "พร้อมรับ",     Sub = "มารับที่เคาน์เตอร์ได้เลย" }
+                };
+            }
+
+            @foreach (var step in steps)
+            {
+                var stepClass = statusId >= step.Id
+                    ? (statusId == step.Id && statusId < 5 ? "active" : "done")
+                    : "";
+
+                <div class="status-step @stepClass">
+                    <div class="dot">
+                        @if (statusId > step.Id || (statusId >= 5))
+                        {
+                            <!-- Check mark สำหรับ step ที่ผ่านแล้ว -->
+                            <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        }
+                    </div>
+                    <span class="label">@step.Label</span>
+                </div>
+            }
+        </div>
+
+        <!-- รายละเอียดขั้นตอนปัจจุบัน -->
+        @{
+            var activeStep = statusId >= 1 && statusId <= 4
+                ? steps.FirstOrDefault(s => s.Id == statusId)
+                : null;
+        }
+        @if (activeStep != null)
+        {
+            <div class="text-[0.75rem] text-center text-[#8D6748] -mt-1 mb-2 leading-snug">
+                @activeStep.Sub
+            </div>
+        }
+
+        <!-- สถานะปัจจุบัน -->
+        <div class="text-center mt-3">
+            @{
+                var (bgColor, textColor) = statusId switch
+                {
+                    1 => ("#fef3c7", "#92400e"),
+                    2 => ("#dbeafe", "#1e40af"),
+                    3 => ("#ede9fe", "#5b21b6"),
+                    4 => ("#d1fae5", "#065f46"),
+                    5 => ("#f3f4f6", "#374151"),
+                    6 => ("#fee2e2", "#991b1b"),
+                    _ => ("#f3f4f6", "#374151")
+                };
+            }
+            <span class="px-4 py-1.5 rounded-full text-sm font-bold"
+                  style="background:@bgColor;color:@textColor;">
+                @statusLabel
+            </span>
+        </div>
+
+        <!-- แสดงข้อความ Ready -->
+        @if (statusId == 4)
+        {
+            <div class="mt-3.5 p-3 bg-green-100 rounded-lg text-center">
+                <div class="font-bold text-green-800">เครื่องดื่มของคุณพร้อมแล้ว!</div>
+                <div class="text-[0.8rem] text-green-800 mt-0.5">กรุณามารับที่เคาน์เตอร์ คิว @order?.QueueNumber</div>
+            </div>
+        }
+
+        <!-- Cancelled -->
+        @if (statusId == 6)
+        {
+            <div class="mt-3.5 p-3 bg-red-100 rounded-lg text-center">
+                <div class="font-bold text-red-800">ออเดอร์ถูกยกเลิก</div>
+                <div class="text-[0.8rem] text-red-800 mt-0.5">กรุณาติดต่อพนักงาน</div>
+            </div>
+        }
+    </div>
+
+    <!-- สถานะการชำระเงิน -->
+    @if (payment != null)
+    {
+        <div class="bg-white rounded-xl border border-[#EFE0C9] p-4 mb-4">
+            <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-3">
+                การชำระเงิน
+            </div>
+            @{
+                var payStatus = payment.PaymentStatusId switch
+                {
+                    1 => ("รอตรวจสอบสลิป", "#92400e", "#fef3c7"),
+                    2 => ("ชำระเงินสำเร็จ", "#065f46", "#d1fae5"),
+                    3 => ("สลิปไม่ถูกต้อง — กรุณาอัปโหลดใหม่", "#991b1b", "#fee2e2"),
+                    _ => ("ไม่ทราบสถานะ", "#374151", "#f3f4f6")
+                };
+            }
+            <div class="px-3.5 py-2.5 rounded-lg text-sm font-bold"
+                 style="background:@payStatus.Item3;color:@payStatus.Item2;">
+                @payStatus.Item1
+            </div>
+
+            @if (payment.PaymentStatusId == 3)
+            {
+                <!-- แสดงเหตุผลที่ Reject (ถ้ามี) -->
+                @if (!string.IsNullOrEmpty(payment.RejectReason))
+                {
+                    <div class="mt-2 px-3.5 py-2 bg-orange-50 border border-orange-200 rounded-lg text-[0.8rem] text-orange-700">
+                        <strong>เหตุผล:</strong> @payment.RejectReason
+                    </div>
+                }
+
+                <a href="@Url.Action("Payment", "Customer", new { orderId = order?.OrderId })"
+                   class="block mt-3 bg-[#6F4E37] text-white text-center py-3 rounded-xl font-bold no-underline">
+                    อัปโหลดสลิปใหม่
+                </a>
+
+                <!-- ปุ่มยกเลิกออเดอร์ (เมื่อสลิปถูก Reject) -->
+                <form asp-controller="Customer" asp-action="CancelOrder" method="post"
+                      onsubmit="return confirm('ยืนยันการยกเลิกออเดอร์? ไม่สามารถยกเลิกได้หลังจากนี้')">
+                    <input type="hidden" name="orderId" value="@order?.OrderId" />
+                    <button type="submit"
+                            class="block w-full mt-2 bg-transparent border-[1.5px] border-red-500 text-red-500 text-center py-2.5 rounded-xl font-bold cursor-pointer text-sm">
+                        ยกเลิกออเดอร์
+                    </button>
+                </form>
+            }
+        </div>
+    }
+    else if (statusId == 1)
+    {
+        <!-- ยังไม่อัปโหลดสลิป — ปุ่มไปชำระเงิน + ยกเลิก -->
+        <a href="@Url.Action("Payment", "Customer", new { orderId = order?.OrderId })"
+           class="block bg-[#6F4E37] text-white text-center py-3.5 rounded-xl font-bold no-underline mb-2">
+            ไปชำระเงิน
+        </a>
+
+        <form asp-controller="Customer" asp-action="CancelOrder" method="post"
+              onsubmit="return confirm('ยืนยันการยกเลิกออเดอร์?')">
+            <input type="hidden" name="orderId" value="@order?.OrderId" />
+            <button type="submit"
+                    class="block w-full bg-transparent border-[1.5px] border-gray-400 text-gray-500 text-center py-2.5 rounded-xl font-semibold cursor-pointer text-[0.85rem] mb-4">
+                ยกเลิกออเดอร์
+            </button>
+        </form>
+    }
+
+    <!-- รายการสินค้า -->
+    <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-4">
+        <div class="bg-[#EFE0C9] px-4 py-2.5 text-[0.78rem] font-bold text-[#6F4E37]">
+            รายการที่สั่ง
+        </div>
+        @if (items != null)
+        {
+            @foreach (var row in items)
+            {
+                <div class="flex justify-between px-4 py-2.5 border-b border-[#f3f4f6] text-sm">
+                    <span>@row.MenuName × @row.Quantity</span>
+                    <span class="text-[#6F4E37] font-semibold">฿@((row.UnitPrice * row.Quantity)?.ToString("N0"))</span>
+                </div>
+            }
+        }
+        <div class="flex justify-between px-4 py-3 font-bold text-[0.95rem]">
+            <span>ยอดรวม</span>
+            <span class="text-[#6F4E37]">฿@order?.NetAmount?.ToString("N0")</span>
+        </div>
+    </div>
+
+    <!-- ปุ่มสั่งใหม่ -->
+    <a href="@Url.Action("Menu", "Customer")"
+       class="block text-center text-[#8D6748] text-sm no-underline py-2">
+        สั่งออเดอร์ใหม่
+    </a>
+
+    @if (isMember)
+    {
+        <!-- Form สำหรับ Logout (ใช้ทั้งปุ่ม Manual และ Auto-logout JS) -->
+        <form id="logoutForm" asp-controller="Customer" asp-action="MemberLogout" method="post">
+        </form>
+
+        @if (statusId == 4)
+        {
+            <!-- Countdown auto-logout เมื่อ order พร้อมรับแล้ว -->
+            <div id="autoLogoutBox" class="mt-2 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+                <div class="text-[0.78rem] font-bold text-amber-700 mb-1">ออกจากระบบอัตโนมัติใน</div>
+                <div id="countdownDisplay" class="font-mono text-[1.6rem] font-bold text-amber-800 leading-none">5:00</div>
+                <div class="text-[0.7rem] text-amber-600 mt-1">เพื่อป้องกันการใช้บัญชีของคุณโดยไม่ได้รับอนุญาต</div>
+            </div>
+        }
+
+        <!-- ปุ่ม Logout (แสดงตลอดเมื่อเป็น Member) -->
+        <button type="button" onclick="submitLogout()"
+                class="flex items-center justify-center gap-2 w-full mt-1 mb-6 bg-transparent border border-[#C8A882] text-[#8D6748] py-2.5 rounded-xl text-sm font-semibold cursor-pointer">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            ออกจากระบบ
+        </button>
+    }
+</div>
+
+<!-- Auto-refresh ถ้าออเดอร์ยังไม่เสร็จ -->
+@if (statusId is 1 or 2 or 3)
+{
+    <script>
+        // รีเฟรชทุก 30 วินาที เพื่ออัปเดตสถานะ
+        setTimeout(function() { location.reload(); }, 30000);
+    </script>
+}
+
+<script>
+    function submitLogout() {
+        document.getElementById('logoutForm')?.submit();
+    }
+
+    // Razor ฝัง flag เป็น JS variable — JS ทั้งหมดอยู่นอก Razor block เพื่อหลีกเลี่ยง parser ตีความ < ผิด
+    var autoLogoutEnabled = @((isMember && statusId == 4).ToString().ToLower());
+
+    if (autoLogoutEnabled) {
+        (function () {
+            var totalSeconds = 5 * 60;
+            var display = document.getElementById('countdownDisplay');
+
+            var timer = setInterval(function () {
+                totalSeconds--;
+
+                if (totalSeconds <= 0) {
+                    clearInterval(timer);
+                    submitLogout();
+                    return;
+                }
+
+                var m = Math.floor(totalSeconds / 60);
+                var s = totalSeconds % 60;
+                display.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+
+                // เปลี่ยนสีกล่องเป็นแดงเมื่อเหลือไม่ถึง 1 นาที
+                if (totalSeconds <= 60) {
+                    var box = document.getElementById('autoLogoutBox');
+                    box.classList.remove('border-amber-200', 'bg-amber-50');
+                    box.classList.add('border-red-200', 'bg-red-50');
+                    display.classList.remove('text-amber-800');
+                    display.classList.add('text-red-700');
+                }
+            }, 1000);
+        })();
+    }
+</script>

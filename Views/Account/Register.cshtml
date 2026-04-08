@@ -1,0 +1,70 @@
+@* Views/Account/Register.cshtml *@
+@* ------------------------------------------------
+- หน้าสมัครสมาชิกใหม่
+- ฟอร์มกรอกข้อมูล: ชื่อ, นามสกุล, เบอร์โทรศัพท์, วันเกิด
+- แสดงข้อความผิดพลาดหากข้อมูลไม่ถูกต้องหรือสมัครไม่สำเร็จ
+- หลังสมัครสำเร็จให้แสดงข้อความ "สมัครสมาชิกสำเร็จ" และเคลียร์ฟอร์ม
+- ใช้ Layout เดียวกับหน้าอื่นๆ ใน Account (เช่น Login) เพื่อความสอดคล้อง
+- URL เข้าถึง: /Account/Register
+- Method: POST (บันทึกข้อมูล)
+- ViewModel: MemberViewModel (มี properties: FirstName, LastName, Phone, BirthDate)
+- Controller Action: AccountController.Register (POST)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.MemberViewModel
+@{
+    ViewData["Title"] = "สมัครสมาชิก";
+    Layout = "_CafeLayout";
+}
+
+<div class="flex items-start justify-center pt-4">
+    <div class="w-full max-w-[500px] bg-white border border-[var(--cf-cream)] rounded-[14px] shadow-[0_8px_30px_rgba(111,78,55,0.12)] overflow-hidden">
+
+        <div class="cf-card-header">สมัครสมาชิก</div>
+
+        <div class="p-7">
+
+            <p class="text-[0.85rem] text-[var(--cf-medium)] mb-6">
+                สมาชิกสะสมแต้มได้ทุกการสั่งซื้อ (10 บาท = 1 แต้ม)
+            </p>
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="alert alert-error mb-4">
+                    <span>@ViewBag.ErrorMessage</span>
+                </div>
+            }
+
+            <form method="post" asp-action="Register" asp-controller="Account">
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text">ชื่อ</span></label>
+                        <input type="text" asp-for="FirstName" class="input input-bordered" placeholder="ชื่อจริง" required />
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text">นามสกุล</span></label>
+                        <input type="text" asp-for="LastName" class="input input-bordered" placeholder="นามสกุล" required />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text">เบอร์โทรศัพท์</span></label>
+                        <input type="tel" asp-for="Phone" class="input input-bordered" placeholder="0XX-XXX-XXXX" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text">วันเกิด</span></label>
+                        <input type="date" asp-for="BirthDate" class="input input-bordered" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-[0.6rem]">
+                    <a asp-action="Index" asp-controller="Home" class="btn btn-ghost">ยกเลิก</a>
+                    <button type="submit" class="btn btn-primary">สมัครสมาชิก</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>

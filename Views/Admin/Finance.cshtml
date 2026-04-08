@@ -1,0 +1,202 @@
+@* Views/Admin/Finance.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงข้อมูลการเงินสำหรับ Admin (Finance Reconciliation)
+- ฟีเจอร์หลัก:
+  - กรองข้อมูลตามวันที่เลือก (ผ่าน query string ?date=YYYY-MM-DD)
+  - แสดงสรุปยอดรับจริง (Approved Total), จำนวนรายการรออนุมัติ, จำนวนรายการที่อนุมัติแล้ว, จำนวนรายการที่ถูกปฏิเสธ
+  - แสดงตารางรายการ Payment ในวันที่เลือก พร้อมข้อมูล: รหัส Payment, รหัสออเดอร์, คิว (ถ้ามี), จำนวนเงิน, สถานะ (Pending/Approved/Rejected), เวลาที่ตรวจสอบ, ลิงก์ดูสลิป (ถ้ามี)
+- ใช้ Layout เฉพาะสำหรับ Admin เพื่อความแตกต่างจากหน้าของ Staff และ Member
+- URL เข้าถึง: /Admin/Finance
+- Method: GET (แสดงข้อมูลตามวันที่เลือก)
+- ViewModel: ไม่มี (ใช้ ViewBag สำหรับส่งข้อมูลสรุปและรายการ Payment)
+- Controller Action: AdminController.Finance (GET)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "สรุปการเงิน";
+    Layout = "_AdminLayout";
+    var paymentRows    = ViewBag.PaymentRows    as IEnumerable<dynamic>;
+    var cashVsTransfer = ViewBag.CashVsTransfer as IEnumerable<dynamic>;
+}
+
+<h1 class="font-['Inter'] text-2xl font-bold text-[#6F4E37] mb-4">
+    สรุปการเงิน
+</h1>
+
+<!-- กรองวัน -->
+<form asp-controller="Admin" asp-action="Finance" method="get"
+      class="flex gap-3 items-end mb-5">
+    <div>
+        <label class="block text-xs font-bold text-[#6F4E37] mb-1">วันที่</label>
+        <input type="date" name="date" value="@ViewBag.TargetDate"
+               class="border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-amber-50 outline-none" />
+    </div>
+    <button type="submit"
+            class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
+        ดู
+    </button>
+</form>
+
+<!-- Summary Cards -->
+<div class="grid gap-4 mb-6 [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))]">
+    <div class="cf-stat-card border-emerald-300">
+        <div class="cf-stat-label">ยอดรับจริง</div>
+        <div class="cf-stat-value text-green-600">฿@(((decimal)ViewBag.ApprovedTotal).ToString("N0"))</div>
+        <div class="cf-stat-desc">อนุมัติแล้ว</div>
+    </div>
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">รออนุมัติ</div>
+        <div class="cf-stat-value">@ViewBag.PendingCount</div>
+        <div class="cf-stat-desc">รายการ</div>
+    </div>
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">อนุมัติแล้ว</div>
+        <div class="cf-stat-value text-green-600">@ViewBag.ApprovedCount</div>
+        <div class="cf-stat-desc">รายการ</div>
+    </div>
+    <div class="cf-stat-card">
+        <div class="cf-stat-label">ปฏิเสธ</div>
+        <div class="cf-stat-value text-red-600">@ViewBag.RejectedCount</div>
+        <div class="cf-stat-desc">รายการ</div>
+    </div>
+</div>
+
+<!-- P&L Summary: Revenue - COGS = Gross Profit -->
+<div class="admin-card mb-6">
+    <div class="admin-card-header">
+        กำไร-ขาดทุน — @(((DateTime)DateTime.Parse(ViewBag.TargetDate)).ToString("dd/MM/yyyy"))
+    </div>
+    <div class="admin-card-body">
+        <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
+            <!-- Revenue -->
+            <div class="bg-green-50 border border-green-300 rounded-xl p-4">
+                <div class="text-xs font-bold text-green-700 mb-1">รายรับ</div>
+                <div class="text-2xl font-bold text-green-600">฿@(((decimal)ViewBag.Revenue).ToString("N0"))</div>
+                <div class="text-xs text-green-700">ยอดรับจริง</div>
+            </div>
+            <!-- COGS -->
+            <div class="bg-amber-50 border border-amber-300 rounded-xl p-4">
+                <div class="text-xs font-bold text-amber-800 mb-1">COGS — ต้นทุนขาย</div>
+                <div class="text-2xl font-bold text-amber-600">฿@(((decimal)ViewBag.TotalCogs).ToString("N0"))</div>
+                <div class="text-xs text-amber-800">
+                    วัตถุดิบที่ใช้: ฿@(((decimal)ViewBag.SaleCogs).ToString("N0"))
+                    &nbsp;+&nbsp; ของเสีย: ฿@(((decimal)ViewBag.WastageCogs).ToString("N0"))
+                </div>
+            </div>
+            <!-- Gross Profit (สีเปลี่ยนตามกำไร/ขาดทุน) -->
+            @{
+                decimal gp     = (decimal)ViewBag.GrossProfit;
+                bool    isPos  = gp >= 0;
+            }
+            <div class="@(isPos ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300") border rounded-xl p-4">
+                <div class="text-xs font-bold @(isPos ? "text-green-700" : "text-red-700") mb-1">กำไรขั้นต้น</div>
+                <div class="text-2xl font-bold @(isPos ? "text-green-600" : "text-red-600")">
+                    @(isPos ? "" : "-")฿@Math.Abs(gp).ToString("N0")
+                </div>
+                <div class="text-xs @(isPos ? "text-green-700" : "text-red-700")">รายรับ - ต้นทุนขาย</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- แยกยอดตามช่องทางการชำระเงิน -->
+@if (cashVsTransfer != null && cashVsTransfer.Any())
+{
+    <div class="admin-card mb-6">
+        <div class="admin-card-header">แยกยอดตามช่องทางชำระเงิน</div>
+        <div class="admin-card-body">
+            <div class="flex gap-4 flex-wrap">
+                @foreach (var method in cashVsTransfer)
+                {
+                    <div class="flex-1 min-w-[140px] bg-amber-50 border border-[#d9c9b6] rounded-xl p-4">
+                        <div class="text-xs font-bold text-amber-800 mb-1">
+                            @method.MethodName
+                        </div>
+                        <div class="text-2xl font-bold text-[#6F4E37]">
+                            ฿@(((decimal)method.Total).ToString("N0"))
+                        </div>
+                        <div class="text-xs text-gray-400">@method.Count รายการ</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ตาราง Payment -->
+<div class="admin-card">
+    <div class="admin-card-header">รายการชำระเงิน — @(((DateTime)DateTime.Parse(ViewBag.TargetDate)).ToString("dd/MM/yyyy"))</div>
+    <div class="admin-card-body p-0">
+        @if (paymentRows == null || !paymentRows.Any())
+        {
+            <div class="p-8 text-center text-gray-400 text-sm">
+                ไม่มีรายการในวันที่เลือก
+            </div>
+        }
+        else
+        {
+            <table class="table table-zebra w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b-2 border-gray-200">
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">#Payment</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">ออเดอร์</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">คิว</th>
+                        <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">จำนวน (฿)</th>
+                        <th class="px-3 py-2 text-center font-bold text-gray-500 text-xs uppercase">สถานะ</th>
+                        <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">เวลา</th>
+                        <th class="px-3 py-2 text-center font-bold text-gray-500 text-xs uppercase">สลิป</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in paymentRows)
+                    {
+                        <!-- สีข้อความตามสถานะ Payment -->
+                        string statusCls = row.Status == "Approved" ? "text-green-600"
+                                         : row.Status == "Rejected" ? "text-red-600"
+                                         : "text-amber-800";
+                        <tr class="border-b border-gray-100">
+                            <td class="px-3 py-2 text-gray-500">#@row.PaymentId</td>
+                            <td class="px-3 py-2 text-gray-800 font-semibold">#@row.OrderId</td>
+                            <td class="px-3 py-2 text-[#6F4E37] font-bold">@(row.QueueNumber ?? "—")</td>
+                            <td class="px-3 py-2 text-right font-bold text-gray-800">
+                                @(((decimal?)row.Amount)?.ToString("N0") ?? "—")
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="text-xs font-bold @statusCls">
+                                    @(row.Status == "Approved" ? "อนุมัติแล้ว"
+                                    : row.Status == "Rejected" ? "ปฏิเสธ"
+                                    : "รออนุมัติ")
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 text-gray-500 text-xs">
+                                @(((DateTime?)row.VerifiedAt)?.ToString("HH:mm") ?? "—")
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                @if (!string.IsNullOrEmpty((string?)row.SlipUrl))
+                                {
+                                    <a href="@row.SlipUrl" target="_blank"
+                                       class="text-xs text-[#6F4E37] font-bold no-underline">ดูสลิป</a>
+                                }
+                                else
+                                {
+                                    <span class="text-gray-400 text-xs">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-gray-200 bg-amber-50">
+                        <td colspan="3" class="px-3 py-2 font-bold">
+                            รวมที่อนุมัติแล้ว
+                        </td>
+                        <td class="px-3 py-2 text-right font-bold text-green-600">
+                            ฿@(((decimal)ViewBag.ApprovedTotal).ToString("N0"))
+                        </td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+    </div>
+</div>

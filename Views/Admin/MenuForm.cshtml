@@ -1,0 +1,276 @@
+@* Views/Admin/MenuForm.cshtml *@
+@* ------------------------------------------------
+- หน้าฟอร์มจัดการเมนูสำหรับ Admin
+- ฟีเจอร์หลัก:
+  - เพิ่มเมนูใหม่
+  - แก้ไขเมนูที่มีอยู่
+- URL เข้าถึง: /Admin/MenuForm
+- Method: GET (แสดงฟอร์ม) / POST (บันทึกข้อมูล)
+- ViewModel: Project_CSI402_T2_Y3.ViewModels.MenuFormViewModel
+- Controller Action: AdminController.MenuForm (GET) / AdminController.MenuSave (POST)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.MenuFormViewModel
+@using Project_CSI402_T2_Y3.ViewModels
+@{
+    ViewData["Title"] = Model.IsEdit ? "แก้ไขเมนู" : "เพิ่มเมนูใหม่";
+    Layout = "_AdminLayout";
+}
+
+<div class="max-w-[680px]">
+
+    <!-- ปุ่มกลับ -->
+    <a asp-controller="Admin" asp-action="MenuList"
+       class="inline-flex items-center gap-1 text-[#6F4E37] text-sm font-bold no-underline mb-4">
+        ← กลับรายการเมนู
+    </a>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            @(Model.IsEdit ? $"แก้ไขเมนู — {Model.MenuName}" : "เพิ่มเมนูใหม่")
+        </div>
+        <div class="admin-card-body">
+
+            @{
+                var formUrl = Model.IsEdit
+                    ? Url.Action("MenuEdit", "Admin", new { id = Model.MenuItemId })
+                    : Url.Action("MenuCreate", "Admin");
+            }
+            <form action="@formUrl" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="id" value="@Model.MenuItemId" />
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <!-- ชื่อเมนู -->
+                    <div class="col-span-2">
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
+                            ชื่อเมนู *
+                        </label>
+                        <input type="text" name="MenuName" value="@Model.MenuName" required
+                               class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-[0.9rem] outline-none" />
+                    </div>
+
+                    <!-- ราคา -->
+                    <div>
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
+                            ราคา (บาท) *
+                        </label>
+                        <input type="number" name="Price" value="@Model.Price" step="0.01" min="0" required
+                               class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-[0.9rem] outline-none" />
+                    </div>
+
+                    <!-- หมวดหมู่ -->
+                    <div>
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
+                            หมวดหมู่ *
+                        </label>
+                        <select name="Category" required
+                                class="select select-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-[0.9rem] outline-none">
+                            @foreach (var cat in Model.Categories)
+                            {
+                                <option value="@cat" selected="@(Model.Category == cat)">
+                                    @MenuFormViewModel.GetThaiName(cat)
+                                </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <!-- คำอธิบาย -->
+                <div class="mb-4">
+                    <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
+                        คำอธิบายเมนู
+                    </label>
+                    <textarea name="MenuDescription" rows="3"
+                              class="textarea textarea-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-[0.9rem] outline-none resize-y">@Model.MenuDescription</textarea>
+                </div>
+
+                <!-- รูปภาพเมนู — เลือก Upload ไฟล์ หรือกรอก URL -->
+                <div class="mb-4">
+                    <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-2">
+                        รูปภาพเมนู
+                    </label>
+
+                    <!-- แท็บเลือกวิธีเพิ่มรูป -->
+                    <div class="flex gap-2 mb-3">
+                        <button type="button" id="tabUpload"
+                                onclick="switchTab('upload')"
+                                class="px-4 py-[0.35rem] rounded-md text-[0.8rem] font-bold cursor-pointer border border-[#6F4E37] bg-[#6F4E37] text-white">
+                            อัปโหลดไฟล์
+                        </button>
+                        <button type="button" id="tabUrl"
+                                onclick="switchTab('url')"
+                                class="px-4 py-[0.35rem] rounded-md text-[0.8rem] font-bold cursor-pointer border border-[#d9c9b6] bg-transparent text-[#6F4E37]">
+                            ใส่ URL
+                        </button>
+                    </div>
+
+                    <!-- แผง Upload ไฟล์ -->
+                    <div id="panelUpload">
+                        <label class="block border-2 border-dashed border-[#C8A97E] rounded-lg p-5 text-center cursor-pointer bg-[#FDF6EC]" id="uploadZone">
+                            <!-- Inbox icon — Heroicons outline (อัปโหลดรูปภาพ) -->
+                            <svg class="w-8 h-8 text-[#C8A97E] mx-auto mb-2 block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                            </svg>
+                            <div id="uploadLabel" class="text-sm font-bold text-[#6F4E37]">คลิกเพื่อเลือกรูปภาพ</div>
+                            <div class="text-[0.7rem] text-gray-400 mt-[3px]">JPG, PNG, WEBP ขนาดไม่เกิน 5MB</div>
+                            <input type="file" name="imageFile" id="imageFileInput" accept="image/*"
+                                   class="hidden" onchange="previewFile(this)" />
+                        </label>
+                        <!-- Preview รูปที่เลือก -->
+                        <div id="filePreviewBox" class="hidden mt-2">
+                            <img id="filePreview" src="" alt="Preview"
+                                 class="h-[100px] rounded-md border border-[#EFE0C9] object-cover" />
+                        </div>
+                    </div>
+
+                    <!-- แผง URL -->
+                    <div id="panelUrl" class="hidden">
+                        <input type="text" name="ImageUrl" value="@Model.ImageUrl" id="imageUrlInput"
+                               placeholder="https://... หรือ /uploads/menus/..."
+                               class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-[0.9rem] outline-none"
+                               oninput="previewUrlImage(this.value)" />
+                        <div id="urlPreviewBox" class="mt-2 @(!string.IsNullOrEmpty(Model.ImageUrl) ? "" : "hidden")">
+                            <img id="urlPreview" src="@Model.ImageUrl"
+                                 class="h-20 rounded-md border border-[#EFE0C9] object-cover"
+                                 onerror="this.style.display='none'" />
+                        </div>
+                        <div class="text-[0.7rem] text-gray-400 mt-[3px]">
+                            เช่น: https://placehold.co/400x300/EFE0C9/6F4E37?text=ชื่อเมนู
+                        </div>
+                    </div>
+
+                    <!-- แสดงรูปปัจจุบัน (สำหรับหน้าแก้ไข) -->
+                    @if (Model.IsEdit && !string.IsNullOrEmpty(Model.ImageUrl))
+                    {
+                        <div class="mt-2 text-xs text-gray-500">
+                            รูปปัจจุบัน:
+                            <img src="@Model.ImageUrl" alt="current"
+                                 class="h-[60px] rounded border border-[#EFE0C9] object-cover align-middle ml-[0.4rem]"
+                                 onerror="this.style.display='none'" />
+                        </div>
+                    }
+                </div>
+
+                <!-- Checkboxes -->
+                <div class="flex gap-8 mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-[#3E2723]">
+                        <input type="checkbox" name="IsAvailable" value="true"
+                               @(Model.IsAvailable ? "checked" : "")
+                               class="checkbox checkbox-sm accent-[#6F4E37]" />
+                        เปิดขาย
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-[#3E2723]">
+                        <input type="checkbox" name="IsSeasonal" value="true"
+                               @(Model.IsSeasonal ? "checked" : "")
+                               id="seasonalCheck"
+                               class="checkbox checkbox-sm accent-[#6F4E37]"
+                               onchange="toggleSeasonDates(this)" />
+                        เมนูตามฤดูกาล
+                    </label>
+                </div>
+
+                @{
+                    // ถ้า Seasonal และวันสิ้นสุดผ่านไปแล้ว → แสดงคำเตือน
+                    bool seasonExpired = Model.IsSeasonal
+                        && !string.IsNullOrEmpty(Model.SeasonEndDate)
+                        && DateTime.TryParse(Model.SeasonEndDate, out var endDt)
+                        && endDt < DateTime.Today;
+                }
+                @if (seasonExpired)
+                {
+                    <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-[0.8rem] text-red-700">
+                        หมดอายุ seasonal แล้ว (สิ้นสุด @DateTime.Parse(Model.SeasonEndDate!).ToString("dd/MM/yyyy"))
+                        — เมนูนี้ถูกปิดขายอัตโนมัติ ต้องแก้วันสิ้นสุดหรือปิด checkbox เมนูตามฤดูกาล
+                    </div>
+                }
+
+                <!-- วันที่ Seasonal -->
+                <div id="seasonDateBox" class="@(Model.IsSeasonal ? "grid" : "hidden") grid-cols-2 gap-4 mb-4 bg-[#FDF6EC] p-[0.875rem] rounded-lg border border-dashed border-[#C8A97E]">
+                    <div>
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
+                            วันที่เริ่ม
+                        </label>
+                        <input type="date" name="SeasonStartDate" value="@Model.SeasonStartDate"
+                               class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
+                            วันที่สิ้นสุด
+                        </label>
+                        <input type="date" name="SeasonEndDate" value="@Model.SeasonEndDate"
+                               class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none" />
+                    </div>
+                </div>
+
+                <!-- ปุ่ม -->
+                <div class="flex gap-3 mt-4">
+                    <button type="submit" class="btn-cf-primary flex-1 justify-center py-3">
+                        @(Model.IsEdit ? "บันทึกการแก้ไข" : "เพิ่มเมนู")
+                    </button>
+                    <a asp-controller="Admin" asp-action="MenuList"
+                       class="btn-cf-outline px-6 py-3">
+                        ยกเลิก
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleSeasonDates(checkbox) {
+        var box = document.getElementById('seasonDateBox');
+        if (checkbox.checked) {
+            box.classList.remove('hidden');
+            box.classList.add('grid');
+        } else {
+            box.classList.remove('grid');
+            box.classList.add('hidden');
+        }
+    }
+
+    // สลับแท็บระหว่าง "อัปโหลดไฟล์" และ "ใส่ URL"
+    function switchTab(tab) {
+        var isUpload = tab === 'upload';
+        document.getElementById('panelUpload').style.display = isUpload ? 'block' : 'none';
+        document.getElementById('panelUrl').style.display    = isUpload ? 'none'  : 'block';
+        document.getElementById('tabUpload').style.background    = isUpload ? '#6F4E37' : 'transparent';
+        document.getElementById('tabUpload').style.color         = isUpload ? '#fff'    : '#6F4E37';
+        document.getElementById('tabUrl').style.background       = isUpload ? 'transparent' : '#6F4E37';
+        document.getElementById('tabUrl').style.color            = isUpload ? '#6F4E37' : '#fff';
+        // ล้าง imageFile เมื่อสลับไปใช้ URL เพื่อไม่ให้ส่งไฟล์เก่า
+        if (!isUpload) document.getElementById('imageFileInput').value = '';
+    }
+
+    // Preview รูปจาก URL
+    function previewUrlImage(url) {
+        var box = document.getElementById('urlPreviewBox');
+        var img = document.getElementById('urlPreview');
+        if (url) { img.src = url; box.style.display = 'block'; }
+        else      { box.style.display = 'none'; }
+    }
+
+    // Preview รูปจากไฟล์ที่เลือก
+    function previewFile(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('filePreview').src = e.target.result;
+                document.getElementById('filePreviewBox').style.display = 'block';
+                document.getElementById('uploadLabel').textContent = input.files[0].name;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // คลิก uploadZone = คลิก input file
+    document.getElementById('uploadZone').addEventListener('click', function() {
+        document.getElementById('imageFileInput').click();
+    });
+
+    // ถ้าเป็นหน้าแก้ไขและมี URL อยู่แล้ว ให้เปิดแท็บ URL โดยอัตโนมัติ
+    (function() {
+        var existingUrl = document.getElementById('imageUrlInput');
+        if (existingUrl && existingUrl.value) switchTab('url');
+    })();
+</script>

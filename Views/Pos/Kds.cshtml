@@ -1,0 +1,375 @@
+@* Views/Pos/Kds.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงออเดอร์สำหรับครัว (Kitchen Display System)
+- แสดงรายการออเดอร์ที่ต้องทำ พร้อมสถานะของแต่ละรายการ
+- ปุ่ม "Done" สำหรับอัปเดตสถานะของแต่ละรายการเป็นเสร็จแล้ว
+- URL เข้าถึง: /Pos/Kds
+- Method: GET (แสดงรายการออเดอร์), POST (อัปเดตสถานะรายการ)
+- ViewModel: PosKdsViewModel (มี properties: List<OrderWithItemsViewModel> Orders)
+- Controller Action: PosController.Kds (GET), PosController.MarkItemDone (POST)
+------------------------------------------------ *@
+
+@model Project_CSI402_T2_Y3.ViewModels.PosKdsViewModel
+@{
+    ViewData["Title"] = "KDS — ระบบแสดงผลครัว";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    .kds-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    /* Ticket การ์ด */
+    .kds-ticket {
+        background: #fff;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+    .kds-ticket.all-done {
+        border-color: #86efac;
+        opacity: 0.7;
+    }
+
+    .kds-ticket-header {
+        padding: 0.6rem 0.875rem;
+        background: #1e293b;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .kds-queue-no {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fbbf24;
+    }
+
+    .kds-ticket-body {
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    /* แถบ Item ในแต่ละ Ticket */
+    .kds-item {
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: border-color 0.2s, opacity 0.2s;
+    }
+
+    .kds-item.done {
+        border-color: #86efac;
+        background: #f0fdf4;
+        opacity: 0.6;
+    }
+
+    .kds-item-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.4rem 0.6rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .kds-item.done .kds-item-head {
+        background: #f0fdf4;
+    }
+
+    .kds-item-body {
+        padding: 0.4rem 0.6rem;
+    }
+
+    .recipe-tag {
+        display: inline-block;
+        background: #fef3c7;
+        color: #92400e;
+        border-radius: 4px;
+        padding: 0.1rem 0.4rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        margin: 0.15rem 0.15rem 0 0;
+    }
+
+    .option-tag {
+        display: inline-block;
+        background: #ede9fe;
+        color: #5b21b6;
+        border-radius: 4px;
+        padding: 0.1rem 0.4rem;
+        font-size: 0.68rem;
+        font-weight: 600;
+        margin: 0.1rem 0.1rem 0 0;
+    }
+
+    .btn-done {
+        background: #16a34a;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-done:hover { background: #15803d; }
+    .btn-done:disabled { background: #86efac; cursor: default; }
+
+    .done-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #16a34a;
+    }
+
+    /* ปุ่ม Call Customer สำหรับเรียกลูกค้า */
+    .btn-call {
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-call:hover { background: #1d4ed8; }
+    .btn-call:disabled { background: #93c5fd; cursor: default; }
+
+    .empty-state {
+        text-align: center;
+        color: #9ca3af;
+        padding: 3rem;
+        font-size: 0.9rem;
+    }
+
+    /* Timer นับเวลา — เปลี่ยนสีตามนาทีที่ผ่านไป */
+    .kds-timer { color: #94a3b8; }          /* ปกติ — เทา */
+    .kds-timer.warn  { color: #fbbf24; }    /* เกิน 5 นาที — เหลือง */
+    .kds-timer.alert { color: #f87171; }    /* เกิน 10 นาที — แดง */
+</style>
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-3">
+    <h1 class="font-serif text-[1.4rem] font-bold text-[#6F4E37]">
+        ระบบแสดงผลครัว
+    </h1>
+    <div class="flex gap-2 items-center">
+        <a asp-controller="Pos" asp-action="Queue"
+           class="border-2 border-[#6F4E37] text-[#6F4E37] px-4 py-1.5 rounded-md text-xs font-bold no-underline">
+            Queue
+        </a>
+        <span id="refresh-timer" class="text-xs text-gray-400">รีเฟรชใน 30s</span>
+    </div>
+</div>
+
+@if (!Model.Orders.Any())
+{
+    <div class="empty-state">
+        ไม่มีออเดอร์ที่ต้องทำในขณะนี้
+    </div>
+}
+else
+{
+    <div class="kds-grid">
+        @foreach (var order in Model.Orders)
+        {
+            bool allDone = order.Items.All(i => i.StatusId == 3);
+            <div class="kds-ticket @(allDone ? "all-done" : "")" id="ticket-@order.OrderId">
+                <!-- Header: Queue Number + Table + Timer -->
+                <div class="kds-ticket-header">
+                    <div>
+                        <div class="kds-queue-no">
+                            @(string.IsNullOrEmpty(order.QueueNumber) ? $"#{order.OrderId}" : order.QueueNumber)
+                        </div>
+                        @if (!string.IsNullOrEmpty(order.TableNumber))
+                        {
+                            <div class="text-[0.72rem] text-slate-400">โต๊ะ @order.TableNumber</div>
+                        }
+                        <!-- Timer นับเวลาตั้งแต่ออเดอร์ถูกสร้าง -->
+                        <div class="kds-timer text-[0.72rem] font-bold mt-1"
+                             data-created="@order.CreatedAt?.ToString("yyyy-MM-ddTHH:mm:ss")"
+                             id="timer-@order.OrderId">00:00</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[0.7rem] text-slate-400 mb-1">@order.CreatedAt?.ToString("HH:mm")</div>
+                        @if (allDone)
+                        {
+                            <div class="text-[0.72rem] font-bold text-green-400 mb-1">พร้อมเสิร์ฟ</div>
+                        }
+                        <!-- ปุ่มเรียกลูกค้า — ใช้งานได้เฉพาะเมื่อทุกเมนูกด Done ครบแล้ว -->
+                        <button class="btn-call"
+                                onclick="callCustomer(@order.OrderId, this)"
+                                title="แจ้งลูกค้าว่าออเดอร์พร้อมเสิร์ฟ"
+                                @(allDone ? "" : "disabled")>
+                            เรียกลูกค้า
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <div class="kds-ticket-body">
+                    @foreach (var item in order.Items)
+                    {
+                        bool itemDone = item.StatusId == 3;
+                        <div class="kds-item @(itemDone ? "done" : "")" id="item-@item.OrderItemId">
+                            <div class="kds-item-head">
+                                <div>
+                                    <span class="font-bold text-[0.9rem] text-gray-800">
+                                        x@(item.Quantity) @item.MenuName
+                                    </span>
+                                </div>
+                                @if (itemDone)
+                                {
+                                    <span class="done-label">เสร็จแล้ว</span>
+                                }
+                                else
+                                {
+                                    <button class="btn-done"
+                                            onclick="markDone(@item.OrderItemId, @order.OrderId, this)">
+                                        เสร็จแล้ว
+                                    </button>
+                                }
+                            </div>
+                            <div class="kds-item-body">
+                                <!-- Options -->
+                                @if (item.Options.Any())
+                                {
+                                    <div class="mb-1">
+                                        @foreach (var opt in item.Options)
+                                        {
+                                            <span class="option-tag">@opt</span>
+                                        }
+                                    </div>
+                                }
+                                <!-- สูตรวัตถุดิบ -->
+                                @if (item.Recipes.Any())
+                                {
+                                    <div>
+                                        @foreach (var r in item.Recipes)
+                                        {
+                                            <span class="recipe-tag">@r.IngredientName @r.QuantityRequired?.ToString("G3") @r.Unit</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<script>
+    // ===== Timer นับเวลาแต่ละออเดอร์ (อัปเดตทุก 1 วินาที) =====
+    function padTwo(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function updateTimers() {
+        var now = new Date();
+        document.querySelectorAll('.kds-timer[data-created]').forEach(function (el) {
+            var created = new Date(el.getAttribute('data-created'));
+            var diffSec = Math.floor((now - created) / 1000);
+            if (diffSec < 0) diffSec = 0;
+
+            var mins = Math.floor(diffSec / 60);
+            var secs = diffSec % 60;
+            el.textContent = padTwo(mins) + ':' + padTwo(secs);
+
+            // เปลี่ยนสีตามเวลาที่ผ่านไป
+            el.classList.remove('warn', 'alert');
+            if (mins >= 10)      el.classList.add('alert');
+            else if (mins >= 5)  el.classList.add('warn');
+        });
+    }
+
+    // เริ่มนับทันที แล้วอัปเดตทุก 1 วินาที
+    updateTimers();
+    setInterval(updateTimers, 1000);
+
+    // ===== Auto-refresh ทุก 30 วินาที =====
+    var seconds = 30;
+    var timerEl = document.getElementById('refresh-timer');
+    setInterval(function () {
+        seconds--;
+        timerEl.textContent = 'รีเฟรชใน ' + seconds + 's';
+        if (seconds <= 0) location.reload();
+    }, 1000);
+
+    // กดเรียกลูกค้า — ส่ง SignalR NotifyOrderReady ซ้ำอีกครั้ง
+    function callCustomer(orderId, btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+
+        fetch('/Pos/CallCustomer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'orderId=' + orderId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                btn.textContent = 'แจ้งแล้ว';
+                // คืนสถานะปุ่มหลัง 3 วินาที
+                setTimeout(() => { btn.disabled = false; btn.textContent = 'เรียกลูกค้า'; }, 3000);
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'เรียกลูกค้า';
+            }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = 'เรียกลูกค้า'; });
+    }
+
+    // กด เสร็จแล้ว ที่ Item — เรียก API แล้วอัปเดต UI
+    function markDone(itemId, orderId, btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+
+        fetch('/Pos/MarkItemDone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'itemId=' + itemId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) { btn.disabled = false; btn.textContent = 'เสร็จแล้ว'; return; }
+
+            // อัปเดต UI ของ Item นี้
+            var itemEl = document.getElementById('item-' + itemId);
+            if (itemEl) {
+                itemEl.classList.add('done');
+                var head = itemEl.querySelector('.kds-item-head > :last-child');
+                if (head) { head.outerHTML = '<span class="done-label">เสร็จแล้ว</span>'; }
+            }
+
+            // ถ้าทุก Item Done → อัปเดต Ticket header เป็น READY และปลดล็อกปุ่มเรียกลูกค้า
+            if (data.allDone) {
+                var ticket = document.getElementById('ticket-' + orderId);
+                if (ticket) {
+                    ticket.classList.add('all-done');
+                    var readyDiv = ticket.querySelector('.kds-ticket-header > div:last-child');
+                    if (readyDiv) {
+                        readyDiv.innerHTML += '<div class="text-[0.72rem] font-bold text-green-400">พร้อมเสิร์ฟ</div>';
+                    }
+                    // ปลดล็อกปุ่มเรียกลูกค้าของ Ticket นี้
+                    var callBtn = ticket.querySelector('.btn-call');
+                    if (callBtn) callBtn.disabled = false;
+                }
+                // รีเฟรชหน้าหลังจาก 2 วินาที เพื่อให้ Ticket หายออกไป
+                setTimeout(() => location.reload(), 2000);
+            }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = 'เสร็จแล้ว'; });
+    }
+</script>

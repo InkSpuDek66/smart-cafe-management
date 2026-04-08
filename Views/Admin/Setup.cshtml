@@ -1,0 +1,52 @@
+@* Views/Admin/Setup.cshtml *@
+@* ------------------------------------------------
+- หน้าสำหรับสร้างบัญชี Admin ครั้งแรก (สำหรับ Owner)
+- ฟอร์มกรอกข้อมูล: ชื่อ, นามสกุล, Username, รหัสผ่าน
+- หลังสร้างบัญชีสำเร็จให้แสดงข้อความ "สร้างบัญชี Owner สำเร็จ" และเปลี่ยนเส้นทางไปยังหน้า Login
+- หน้านี้จะปิดอัตโนมัติเมื่อมีพนักงานในระบบแล้ว (ตรวจสอบจาก Controller)
+- URL เข้าถึง: /Admin/Setup
+- Method: GET (แสดงฟอร์ม), POST (บันทึกข้อมูล)
+- ViewModel: ไม่มี (ใช้ FormCollection หรือ parameters ใน Controller)
+- Controller Action: AdminController.Setup (GET/POST)
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "Setup — สร้างบัญชี Admin ครั้งแรก";
+    Layout = "_CafeLayout";
+}
+
+<div class="max-w-md mx-auto">
+    <div class="card shadow-sm" style="border: 1px solid var(--cf-cream);">
+        <div class="cf-card-header">สร้างบัญชี Admin ครั้งแรก</div>
+        <div class="card-body p-6">
+            <p class="cf-page-subtitle mb-6">หน้านี้ใช้สร้างบัญชี Owner ครั้งแรก — จะปิดอัตโนมัติเมื่อมีพนักงานในระบบแล้ว</p>
+
+            <form asp-action="Setup" asp-controller="Admin" method="post" class="space-y-4">
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">ชื่อจริง</span></label>
+                    <input type="text" name="firstName" class="input input-bordered w-full" required />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">นามสกุล</span></label>
+                    <input type="text" name="lastName" class="input input-bordered w-full" required />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Username</span></label>
+                    <input type="text" name="username" class="input input-bordered w-full" required />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text">รหัสผ่าน</span></label>
+                    <input type="password" name="password" class="input input-bordered w-full" required minlength="6" />
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full mt-4">
+                    สร้างบัญชี Owner
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,300 @@
+@{
+    ViewData["Title"] = "Public Screen";
+    Layout = null; // หน้าจอ TV ไม่ใช้ Layout ทั่วไป
+    var readyOrders     = ViewBag.ReadyOrders     as IEnumerable<dynamic>;
+    var recentCompleted = ViewBag.RecentCompleted as IEnumerable<dynamic>;
+}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Cafe — Public Screen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800&family=Noto+Sans+Thai:wght@400;700&display=swap"
+          rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Noto Sans Thai', sans-serif;
+            background: #1a0f0a;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen-header {
+            background: #6F4E37;
+            padding: 0.75rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .screen-header h1 {
+            font-family: 'Noto Sans Thai', sans-serif;
+            font-size: 1.5rem;
+            color: #F5E6D0;
+        }
+
+        .screen-body {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* ===== Panel ซ้าย: คิวพร้อมเสิร์ฟ ===== */
+        .ready-panel {
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+        }
+
+        .ready-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #C8A97E;
+            margin-bottom: 1rem;
+        }
+
+        .queue-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .queue-card {
+            background: #2a1a10;
+            border: 2px solid #C8A97E;
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            animation: popIn 0.4s ease;
+        }
+
+        .queue-no {
+            font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #fbbf24;
+            line-height: 1;
+        }
+
+        .queue-table {
+            font-size: 0.875rem;
+            color: #C8A97E;
+            margin-top: 0.4rem;
+        }
+
+        .ready-badge {
+            display: inline-block;
+            background: #16a34a;
+            color: #fff;
+            border-radius: 99px;
+            padding: 0.2rem 0.7rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .empty-ready {
+            text-align: center;
+            color: #6b7280;
+            padding: 4rem 2rem;
+            font-size: 1rem;
+        }
+
+        /* ===== Panel ขวา: เพิ่งเสร็จ ===== */
+        .done-panel {
+            background: #12090600;
+            border-left: 1px solid #3a2010;
+            padding: 1.5rem 1rem;
+        }
+
+        .done-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #6b7280;
+            margin-bottom: 0.75rem;
+        }
+
+        .done-item {
+            padding: 0.5rem 0.6rem;
+            border-bottom: 1px solid #2a1a10;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .done-queue-no {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #6b7280;
+            text-decoration: line-through;
+        }
+
+        /* ===== Footer ===== */
+        .screen-footer {
+            background: #2a1a10;
+            padding: 0.4rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .clock {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #C8A97E;
+        }
+
+        @@keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+
+        /* SignalR แจ้งเตือน */
+        .notify-bar {
+            position: fixed;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fbbf24;
+            color: #1a0f0a;
+            padding: 0.75rem 2rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            z-index: 100;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="screen-header">
+        <h1>Smart Cafe</h1>
+        <div style="font-size:0.875rem;color:#F5E6D0;opacity:0.8;">กรุณาพักรอบริเวณเคาน์เตอร์</div>
+    </div>
+
+    <div class="screen-body">
+
+        <!-- คิวพร้อมเสิร์ฟ -->
+        <div class="ready-panel">
+            <div class="ready-label">พร้อมรับออเดอร์</div>
+            <div class="queue-grid" id="queueGrid">
+                @if (readyOrders == null || !readyOrders.Any())
+                {
+                    <div class="empty-ready [grid-column:1/-1]">
+                        ไม่มีออเดอร์พร้อมเสิร์ฟในขณะนี้
+                    </div>
+                }
+                else
+                {
+                    @foreach (var o in readyOrders)
+                    {
+                        <div class="queue-card">
+                            <div class="queue-no">@o.QueueNumber</div>
+                            @if (!string.IsNullOrEmpty((string)o.TableNumber))
+                            {
+                                <div class="queue-table">โต๊ะ @o.TableNumber</div>
+                            }
+                            <div><span class="ready-badge">พร้อมรับ</span></div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- คิวเพิ่งเสิร์ฟ -->
+        <div class="done-panel">
+            <div class="done-label">เสร็จแล้ว</div>
+            @if (recentCompleted != null)
+            {
+                @foreach (var o in recentCompleted)
+                {
+                    <div class="done-item">
+                        <span class="done-queue-no">@o.QueueNumber</span>
+                    </div>
+                }
+            }
+        </div>
+
+    </div>
+
+    <div class="screen-footer">
+        <div style="font-size:0.75rem;color:#6b7280;">Public Screen v1.0</div>
+        <div class="clock" id="clock">--:--:--</div>
+        <div style="font-size:0.75rem;color:#6b7280;" id="refreshIn">Auto-refresh 10s</div>
+    </div>
+
+    <!-- Toast แจ้งเตือนคิวใหม่ -->
+    <div class="notify-bar" id="notifyBar"></div>
+
+</body>
+
+<!-- SignalR Client — Public Screen Join กลุ่ม "public" -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+    // นาฬิกา
+    function updateClock() {
+        var now = new Date();
+        document.getElementById('clock').textContent =
+            String(now.getHours()).padStart(2,'0') + ':' +
+            String(now.getMinutes()).padStart(2,'0') + ':' +
+            String(now.getSeconds()).padStart(2,'0');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Auto-refresh ทุก 10 วินาที
+    var countdown = 10;
+    setInterval(function () {
+        countdown--;
+        document.getElementById('refreshIn').textContent = 'Auto-refresh ' + countdown + 's';
+        if (countdown <= 0) location.reload();
+    }, 1000);
+
+    // SignalR — รับ NotifyOrderReady และอัปเดต UI ทันที
+    var connection = new signalR.HubConnectionBuilder()
+        .withUrl("/hubs/cafe")
+        .withAutomaticReconnect()
+        .build();
+
+    connection.on("NotifyOrderReady", function (data) {
+        // แสดง toast
+        var bar = document.getElementById('notifyBar');
+        bar.textContent = 'คิว ' + data.queueNumber + ' พร้อมรับแล้ว!';
+        bar.style.display = 'block';
+        setTimeout(function () { bar.style.display = 'none'; }, 4000);
+
+        // เพิ่ม card ลงในกริดโดยไม่ต้อง reload
+        var grid = document.getElementById('queueGrid');
+        // ลบข้อความ "ไม่มีออเดอร์" ออกก่อน
+        var empty = grid.querySelector('.empty-ready');
+        if (empty) empty.remove();
+
+        var card = document.createElement('div');
+        card.className = 'queue-card';
+        card.innerHTML = '<div class="queue-no">' + data.queueNumber + '</div>'
+                       + '<div><span class="ready-badge">พร้อมรับ</span></div>';
+        grid.appendChild(card);
+    });
+
+    connection.start()
+        .then(function () { return connection.invoke("JoinGroup", "public"); })
+        .catch(function (err) { console.error("SignalR Public connect error:", err); });
+</script>
+</html>

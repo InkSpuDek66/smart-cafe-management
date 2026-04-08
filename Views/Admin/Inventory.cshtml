@@ -1,0 +1,183 @@
+@* Views/Admin/Inventory.cshtml *@
+@* ------------------------------------------------
+- หน้าจัดการสต็อกวัตถุดิบสำหรับ Admin
+- ฟีเจอร์หลัก:
+  - แสดงตารางสต็อกวัตถุดิบ
+  - เพิ่มวัตถุดิบใหม่
+  - ปรับปรุงจำนวนสต็อก
+- URL เข้าถึง: /Admin/Inventory
+- Method: GET (แสดงข้อมูลสต็อก)
+- ViewModel: List<Project_CSI402_T2_Y3.Models.Db.Ingredient>
+- Controller Action: AdminController.Inventory (GET)
+------------------------------------------------ *@
+
+@model List<Project_CSI402_T2_Y3.Models.Db.Ingredient>
+@{
+    ViewData["Title"] = "จัดการคลังวัตถุดิบ";
+    Layout = "_AdminLayout";
+    var restockLogs = ViewBag.RestockLogs as IEnumerable<dynamic>;
+}
+
+<style>
+    .stock-low { background: #fef2f2 !important; }
+    .stock-ok  { background: #f0fdf4 !important; }
+</style>
+
+<h1 class="font-['Inter'] text-2xl font-bold text-[#6F4E37] mb-4">
+    จัดการคลังวัตถุดิบ
+</h1>
+
+
+<div class="grid grid-cols-2 gap-6 items-start">
+
+    <!-- ===== ตารางสต็อก + ฟอร์ม Restock ===== -->
+    <div>
+        <div class="admin-card">
+            <div class="admin-card-header flex justify-between items-center">
+                <span>สต็อกวัตถุดิบ</span>
+                <button type="button"
+                        onclick="document.getElementById('addIngredientPanel').style.display = document.getElementById('addIngredientPanel').style.display === 'none' ? 'block' : 'none'"
+                        class="btn btn-xs bg-[#6F4E37] text-white border-none font-bold">
+                    + เพิ่มวัตถุดิบ
+                </button>
+            </div>
+
+            <!-- ฟอร์มเพิ่มวัตถุดิบใหม่ (ซ่อนไว้ก่อน) -->
+            <div id="addIngredientPanel" class="hidden p-4 border-b border-gray-100 bg-amber-50">
+                <form asp-controller="Admin" asp-action="AddIngredient" method="post"
+                      class="grid gap-2 items-end [grid-template-columns:2fr_1fr_1fr_1fr_auto]">
+                    <div>
+                        <label class="text-xs font-bold text-[#6F4E37] block mb-1">ชื่อวัตถุดิบ</label>
+                        <input type="text" name="ingredientName" required placeholder="เช่น กาแฟ Espresso"
+                               class="w-full border border-[#d9c9b6] rounded px-2 py-1 text-sm bg-white outline-none" />
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-[#6F4E37] block mb-1">หน่วย</label>
+                        <input type="text" name="unit" required placeholder="กรัม / มล."
+                               class="w-full border border-[#d9c9b6] rounded px-2 py-1 text-sm bg-white outline-none" />
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-[#6F4E37] block mb-1">Reorder Level</label>
+                        <input type="number" name="reorderLevel" value="0" min="0" step="0.01"
+                               class="w-full border border-[#d9c9b6] rounded px-2 py-1 text-sm bg-white outline-none" />
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-[#6F4E37] block mb-1">ราคา/หน่วย (บาท)</label>
+                        <input type="number" name="costPerUnit" value="0" min="0" step="0.01"
+                               class="w-full border border-[#d9c9b6] rounded px-2 py-1 text-sm bg-white outline-none" />
+                    </div>
+                    <button type="submit"
+                            class="btn btn-sm bg-green-600 text-white border-none font-bold whitespace-nowrap">
+                        บันทึก
+                    </button>
+                </form>
+            </div>
+
+            <div class="admin-card-body p-0">
+                @if (!Model.Any())
+                {
+                    <div class="p-8 text-center text-gray-400 text-sm">
+                        ยังไม่มีวัตถุดิบในระบบ
+                    </div>
+                }
+                else
+                {
+                    <table class="table w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b-2 border-gray-200">
+                                <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">วัตถุดิบ</th>
+                                <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">สต็อก</th>
+                                <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">จอง</th>
+                                <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">Reorder</th>
+                                <th class="px-3 py-2 text-center font-bold text-gray-500 text-xs uppercase">Restock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ing in Model)
+                            {
+                                bool isLow = (ing.StockQuantity ?? 0) <= (ing.ReorderLevel ?? 0);
+                                <tr class="@(isLow ? "stock-low" : "") border-b border-gray-100">
+                                    <td class="px-3 py-2">
+                                        <div class="font-semibold text-gray-800">@ing.IngredientName</div>
+                                        <div class="text-xs text-gray-400">@ing.Unit</div>
+                                        @if (isLow)
+                                        {
+                                            <span class="text-xs text-red-600 font-bold">LOW STOCK</span>
+                                        }
+                                    </td>
+                                    <td class="px-3 py-2 text-right font-bold @(isLow ? "text-red-600" : "text-green-600")">
+                                        @ing.StockQuantity?.ToString("N2")
+                                    </td>
+                                    <td class="px-3 py-2 text-right text-gray-500">
+                                        @ing.ReservedQty?.ToString("N2")
+                                    </td>
+                                    <td class="px-3 py-2 text-right text-gray-500">
+                                        @ing.ReorderLevel?.ToString("N2")
+                                    </td>
+                                    <td class="px-2 py-1 text-center">
+                                        <!-- Inline Restock Form -->
+                                        <form asp-controller="Admin" asp-action="Restock" method="post"
+                                              class="flex gap-1 items-center justify-center">
+                                            <input type="hidden" name="ingredientId" value="@ing.IngredientId" />
+                                            <input type="number" name="quantity" min="0.001" step="0.001"
+                                                   placeholder="ปริมาณ"
+                                                   class="w-20 border border-[#d9c9b6] rounded px-1 py-1 text-xs outline-none" />
+                                            <button type="submit"
+                                                    class="btn btn-xs bg-[#6F4E37] text-white border-none font-bold whitespace-nowrap">
+                                                +Restock
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ประวัติ Restock ===== -->
+    <div>
+        <div class="admin-card">
+            <div class="admin-card-header">ประวัติ Restock (20 ล่าสุด)</div>
+            <div class="admin-card-body p-0">
+                @if (restockLogs == null || !restockLogs.Any())
+                {
+                    <div class="px-5 py-6 text-center text-gray-400 text-sm">
+                        ยังไม่มีประวัติ Restock
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-zebra w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b-2 border-gray-200">
+                                <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">วัตถุดิบ</th>
+                                <th class="px-3 py-2 text-right font-bold text-gray-500 text-xs uppercase">+ปริมาณ</th>
+                                <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">โดย</th>
+                                <th class="px-3 py-2 text-left font-bold text-gray-500 text-xs uppercase">เวลา</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in restockLogs)
+                            {
+                                <tr class="border-b border-gray-100">
+                                    <td class="px-3 py-2">@log.IngredientName</td>
+                                    <td class="px-3 py-2 text-right text-green-600 font-bold">
+                                        +@(((float)log.QuantityChange).ToString("N2"))
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-500">@log.CreatedBy</td>
+                                    <td class="px-3 py-2 text-gray-500">
+                                        @(((DateTime?)log.CreatedAt)?.ToString("dd/MM HH:mm"))
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
