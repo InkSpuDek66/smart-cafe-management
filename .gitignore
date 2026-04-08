@@ -1,3 +1,6 @@
+## Claude Code local config
+.claude/
+
 ## ASP.NET Core + Visual Studio
 *.user
 *.suo
