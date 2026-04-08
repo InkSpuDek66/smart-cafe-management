@@ -36,7 +36,7 @@
          style="background:linear-gradient(135deg,#6F4E37,#3E2723);">
         <div class="text-[0.8rem] opacity-75 mb-1">ยอดที่ต้องชำระ</div>
         <div class="font-serif text-[2.5rem] font-bold" id="net-amount-display">
-            ฿@order?.NetAmount?.ToString("N0")
+            @order?.NetAmount?.ToString("N0")฿
         </div>
     </div>
 
@@ -51,7 +51,7 @@
             {
                 <div class="flex justify-between px-4 py-2.5 border-b border-[#f3f4f6] text-sm">
                     <span>@row.mi.MenuName × @row.oi.Quantity</span>
-                    <span class="font-semibold text-[#6F4E37]">฿@((row.oi.UnitPrice * row.oi.Quantity)?.ToString("N0"))</span>
+                    <span class="font-semibold text-[#6F4E37]">@((row.oi.UnitPrice * row.oi.Quantity)?.ToString("N0"))฿</span>
                 </div>
             }
         }
@@ -145,7 +145,7 @@
 
             <!-- ขั้นตอน -->
             <div class="text-[0.8rem] text-gray-500 mb-4 leading-loose">
-                1. โอนเงิน <strong class="text-[#3E2723]">฿@order?.NetAmount?.ToString("N0")</strong> ไปยังบัญชีร้าน<br/>
+                1. โอนเงิน <strong class="text-[#3E2723]">@order?.NetAmount?.ToString("N0")฿</strong> ไปยังบัญชีร้าน<br/>
                 2. บันทึกหน้าจอสลิปการโอน<br/>
                 3. กดเลือกรูปและ "ส่งสลิป" ด้านล่าง
             </div>
@@ -215,7 +215,7 @@
 
         // อัปเดตยอดที่ต้องชำระบน gradient card
         var netEl = document.getElementById('net-amount-display');
-        if (netEl) netEl.textContent = '฿' + newNetAmount.toLocaleString('th-TH', { minimumFractionDigits: 0 });
+        if (netEl) netEl.textContent = newNetAmount.toLocaleString('th-TH', { minimumFractionDigits: 0 }) + '฿';
     }
 
     function customerRedeemPoints() {
@@ -227,7 +227,7 @@
             .then(function(data) {
                 if (!data.ok) { alert(data.message); return; }
                 document.getElementById('member-points-display').textContent = data.remainPoints;
-                showRedeemSuccess('แลก ' + pts + ' แต้มสำเร็จ — ลดราคา ฿' + pts, data.newNetAmount);
+                showRedeemSuccess('แลก ' + pts + ' แต้มสำเร็จ — ลดราคา ' + pts + '฿', data.newNetAmount);
             })
             .catch(function() { alert('เกิดข้อผิดพลาด กรุณาลองใหม่'); });
     }
@@ -238,7 +238,7 @@
             .then(function(data) {
                 if (!data.ok) { alert(data.message); return; }
                 document.getElementById('member-stamps-display').textContent = data.remainStamps + '/10';
-                showRedeemSuccess('ใช้ 10 Stamp สำเร็จ — รับเครื่องดื่มฟรี ฿' + data.freePrice, data.newNetAmount);
+                showRedeemSuccess('ใช้ 10 Stamp สำเร็จ — รับเครื่องดื่มฟรี ' + data.freePrice + '฿', data.newNetAmount);
             })
             .catch(function() { alert('เกิดข้อผิดพลาด กรุณาลองใหม่'); });
     }

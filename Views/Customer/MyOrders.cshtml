@@ -156,7 +156,7 @@
                                 <div class="flex justify-between text-sm py-1 border-b border-[#f3f4f6] last:border-0">
                                     <span class="text-[#3E2723]">@it.MenuName × @it.Quantity</span>
                                     <span class="text-[#6F4E37] font-semibold">
-                                        ฿@((it.UnitPrice * it.Quantity)?.ToString("N0"))
+                                        @((it.UnitPrice * it.Quantity)?.ToString("N0"))฿
                                     </span>
                                 </div>
                             }
@@ -172,7 +172,7 @@
                     <!-- footer card: ยอดรวม + ปุ่มดูรายละเอียด -->
                     <div class="flex items-center justify-between px-4 py-3 border-t border-[#EFE0C9] mt-1">
                         <div class="font-['Inter'] font-bold text-[#6F4E37] tracking-tight">
-                            ฿@order.NetAmount?.ToString("N0")
+                            @order.NetAmount?.ToString("N0")฿
                         </div>
                         <a href="@Url.Action("Tracking", "Customer", new { orderId = order.OrderId })"
                            class="btn btn-xs bg-[#6F4E37] text-white border-none font-bold gap-1">

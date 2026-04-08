@@ -381,7 +381,7 @@ public class PosController : Controller
     // เปลี่ยน OrderStatus จาก Ready (4) → Completed (5)
     // =====================================================================
     [HttpPost]
-    public IActionResult MarkOrderCompleted(int orderId)
+    public async Task<IActionResult> MarkOrderCompleted(int orderId)
     {
         if (!IsLoggedIn()) return Json(new { ok = false });
         // เฉพาะ Cashier (2), Manager (3), Owner (5) ส่งลูกค้าได้
@@ -393,6 +393,13 @@ public class PosController : Controller
 
         order.OrderStatusId = 5; // Completed
         _db.SaveChanges();
+
+        // แจ้ง Public Screen ให้ลบ card ออกทันที
+        await _hub.Clients.Group("public").SendAsync("NotifyOrderCompleted", new
+        {
+            orderId     = order.OrderId,
+            queueNumber = order.QueueNumber
+        });
 
         return Json(new { ok = true });
     }

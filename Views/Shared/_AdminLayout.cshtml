@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — Admin</title>
 
+    <link rel="icon" href="/coffee-removebg-preview.ico" type="image/x-icon" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -606,7 +607,7 @@
 
     // รับแจ้งเตือนสลิปใหม่ — แสดง toast และอัปเดต badge
     connection.on("NotifyNewSlip", function (data) {
-        showToast("มีสลิปใหม่รอตรวจสอบ — ออเดอร์ #" + data.orderId + " (฿" + data.amount + ")", "warning");
+        showToast("มีสลิปใหม่รอตรวจสอบ — ออเดอร์ #" + data.orderId + " (" + data.amount + "฿)", "warning");
         // อัปเดต badge ตรวจสอบสลิปใน Sidebar
         var badge = document.querySelector('.nav-badge');
         if (badge) {

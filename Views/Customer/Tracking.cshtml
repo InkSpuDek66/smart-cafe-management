@@ -217,13 +217,13 @@
             {
                 <div class="flex justify-between px-4 py-2.5 border-b border-[#f3f4f6] text-sm">
                     <span>@row.MenuName × @row.Quantity</span>
-                    <span class="text-[#6F4E37] font-semibold">฿@((row.UnitPrice * row.Quantity)?.ToString("N0"))</span>
+                    <span class="text-[#6F4E37] font-semibold">@((row.UnitPrice * row.Quantity)?.ToString("N0"))฿</span>
                 </div>
             }
         }
         <div class="flex justify-between px-4 py-3 font-bold text-[0.95rem]">
             <span>ยอดรวม</span>
-            <span class="text-[#6F4E37]">฿@order?.NetAmount?.ToString("N0")</span>
+            <span class="text-[#6F4E37]">@order?.NetAmount?.ToString("N0")฿</span>
         </div>
     </div>
 

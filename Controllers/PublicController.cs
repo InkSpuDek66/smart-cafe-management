@@ -30,9 +30,10 @@ public class PublicController : Controller
             .Select(o => new { o.OrderId, o.QueueNumber, o.TableId })
             .ToList();
 
-        // ออเดอร์เสร็จแล้ว 5 ล่าสุด (เพิ่งเสิร์ฟ — StatusId=5)
+        // ออเดอร์เสร็จแล้ว 5 ล่าสุดเฉพาะวันนี้ (เพิ่งเสิร์ฟ — StatusId=5)
+        var today = DateTime.Today;
         var recentCompleted = _db.Orders
-            .Where(o => o.OrderStatusId == 5)
+            .Where(o => o.OrderStatusId == 5 && o.CreatedAt >= today)
             .OrderByDescending(o => o.OrderId)
             .Take(5)
             .Select(o => new { o.OrderId, o.QueueNumber })

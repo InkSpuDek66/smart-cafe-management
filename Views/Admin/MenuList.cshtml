@@ -75,7 +75,7 @@
                                 @MenuFormViewModel.GetThaiName(item.Category)
                             </span>
                         </td>
-                        <td class="font-bold text-[#6F4E37]">฿@item.Price?.ToString("N0")</td>
+                        <td class="font-bold text-[#6F4E37]">@item.Price?.ToString("N0")฿</td>
                         <td>
                             <!-- ปุ่ม Toggle + badge สถานะในแถวเดียว -->
                             <form asp-controller="Admin" asp-action="ToggleMenuAvailability"

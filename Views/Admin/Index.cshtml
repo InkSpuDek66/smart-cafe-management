@@ -88,7 +88,7 @@
         </div>
         <div>
             <div class="stat-label">ของเสียวันนี้</div>
-            <div class="stat-value text-red-600">฿@Model.TodayWastageCost.ToString("N0")</div>
+            <div class="stat-value text-red-600">@Model.TodayWastageCost.ToString("N0")฿</div>
             <div class="stat-desc">ต้นทุนสูญเสีย</div>
         </div>
     </div>
@@ -123,7 +123,7 @@
                             <td class="font-semibold">@(o.TableNumber ?? "—")</td>
                             <td>@(o.CustomerName ?? "แขก")</td>
                             <td class="font-bold text-[#6F4E37]">@(o.QueueNumber ?? "—")</td>
-                            <td class="font-bold">฿@o.NetAmount.ToString("N0")</td>
+                            <td class="font-bold">@o.NetAmount.ToString("N0")฿</td>
                             <td>
                                 <span class="status-badge @o.StatusBadgeClass">@o.StatusNameTh</span>
                             </td>
@@ -166,7 +166,7 @@
                             </div>
                             <div class="text-right">
                                 <div class="text-xs font-bold text-[#6F4E37]">@item.Quantity ชิ้น</div>
-                                <div class="text-xs text-gray-400">฿@item.Revenue.ToString("N0")</div>
+                                <div class="text-xs text-gray-400">@item.Revenue.ToString("N0")฿</div>
                             </div>
                         </div>
                     }
@@ -254,7 +254,7 @@
                             @hourlySalesToday.Sum(r => (int)r.OrderCount)
                         </td>
                         <td class="px-3 py-2 text-right font-bold text-green-600">
-                            ฿@hourlySalesToday.Sum(r => (decimal)r.Revenue).ToString("N0")
+                            @hourlySalesToday.Sum(r => (decimal)r.Revenue).ToString("N0")฿
                         </td>
                         <td></td>
                     </tr>

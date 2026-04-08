@@ -48,6 +48,7 @@ public class MenuFormViewModel
         { "Drink",      "เครื่องดื่ม" }
     };
 
+    // แปลงชื่อหมวดหมู่เป็นภาษาไทย
     public static string GetThaiName(string? cat) =>
         cat != null && CategoryThaiNames.TryGetValue(cat, out var t) ? t : (cat ?? "");
 }

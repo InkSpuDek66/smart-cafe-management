@@ -75,7 +75,7 @@
 
                     <!-- ราคาต่อชิ้น -->
                     <div class="text-[0.8rem] text-gray-400">
-                        ฿@((ci.UnitPrice + ci.OptionPriceAdjustment).ToString("N0")) / ชิ้น
+                        @((ci.UnitPrice + ci.OptionPriceAdjustment).ToString("N0"))฿ / ชิ้น
                     </div>
 
                     <!-- ควบคุมจำนวน + ราคารวม -->
@@ -104,7 +104,7 @@
 
                         <!-- ราคารวมรายการนี้ -->
                         <span class="font-serif font-bold text-[#6F4E37] text-base">
-                            ฿@ci.ItemTotal.ToString("N0")
+                            @ci.ItemTotal.ToString("N0")฿
                         </span>
                     </div>
                 </div>
@@ -129,7 +129,7 @@
                 <span class="text-[1.4rem]">🍪</span>
                 <div>
                     <div class="font-bold text-green-800 text-[0.9rem]">ยินดีด้วย! คุณได้รับ Cookie ฟรี 1 ชิ้น</div>
-                    <div class="text-xs text-green-700 mt-0.5">โปรโมชั่นยอดสั่งซื้อครบ ฿300 — แจ้งพนักงานเพื่อรับสิทธิ์</div>
+                    <div class="text-xs text-green-700 mt-0.5">โปรโมชั่นยอดสั่งซื้อครบ 300฿ — แจ้งพนักงานเพื่อรับสิทธิ์</div>
                 </div>
             </div>
         }
@@ -139,7 +139,7 @@
             <div class="bg-amber-50 border-[1.5px] border-yellow-300 rounded-xl px-4 py-3 mb-3 flex items-center gap-3">
                 <span class="text-[1.2rem]">🍪</span>
                 <div class="text-[0.8rem] text-amber-800">
-                    สั่งเพิ่มอีก <strong>฿@remaining.ToString("N0")</strong> รับ Cookie ฟรี 1 ชิ้น
+                    สั่งเพิ่มอีก <strong>@remaining.ToString("N0")฿</strong> รับ Cookie ฟรี 1 ชิ้น
                 </div>
             </div>
         }
@@ -148,12 +148,12 @@
         <div class="bg-white rounded-xl border border-[#EFE0C9] p-4 mt-2">
             <div class="flex justify-between mb-2 text-sm text-gray-500">
                 <span>รวม (@Model.TotalItemCount รายการ)</span>
-                <span>฿@Model.TotalAmount.ToString("N0")</span>
+                <span>@Model.TotalAmount.ToString("N0")฿</span>
             </div>
             <div class="flex justify-between font-bold text-base text-[#3E2723] pt-2 border-t border-[#EFE0C9] mb-4">
                 <span>ยอดรวมทั้งสิ้น</span>
                 <span class="font-serif text-[#6F4E37] text-[1.25rem]">
-                    ฿@Model.TotalAmount.ToString("N0")
+                    @Model.TotalAmount.ToString("N0")฿
                 </span>
             </div>
 

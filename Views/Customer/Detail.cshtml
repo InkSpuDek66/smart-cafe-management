@@ -64,7 +64,7 @@
             }
         </div>
         <div class="font-['Inter'] tracking-tight text-2xl font-bold text-[#6F4E37] whitespace-nowrap ml-2">
-            ฿@item.Price?.ToString("N0")
+            @item.Price?.ToString("N0")฿
         </div>
     </div>
 
@@ -168,7 +168,7 @@
             <div>
                 <div class="text-[0.72rem] text-gray-400">ราคารวม</div>
                 <div id="totalDisplay" class="font-['Inter'] tracking-tight text-2xl font-bold text-[#6F4E37]">
-                    ฿@item.Price?.ToString("N0")
+                    @item.Price?.ToString("N0")฿
                 </div>
             </div>
             <button type="submit"
@@ -228,7 +228,7 @@
         var adj = sizePrice + milkPrice;
         document.getElementById('optionPriceAdj').value = adj;
         var total = (basePrice + adj) * qty;
-        document.getElementById('totalDisplay').textContent = '฿' + total.toLocaleString('th-TH', {minimumFractionDigits:0});
+        document.getElementById('totalDisplay').textContent = total.toLocaleString('th-TH', {minimumFractionDigits:0}) + '฿';
     }
 
     function changeQty(delta) {

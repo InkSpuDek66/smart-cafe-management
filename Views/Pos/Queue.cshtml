@@ -353,7 +353,7 @@
                             }
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <span class="text-[0.82rem] font-bold text-[#6F4E37]">฿@order.TotalAmount?.ToString("N0")</span>
+                            <span class="text-[0.82rem] font-bold text-[#6F4E37]">@order.TotalAmount?.ToString("N0")฿</span>
                             <span class="badge-status badge-waiting">รอชำระ</span>
                         </div>
                     </div>
@@ -378,7 +378,7 @@
                         <div class="flex justify-between items-center mt-1.5">
                             <span class="text-[0.7rem] text-gray-400">@order.CreatedAt?.ToString("HH:mm")</span>
                             <span class="text-[0.8rem] font-bold text-[#6F4E37]" id="net-@order.OrderId">
-                                ฿@order.NetAmount?.ToString("N0")
+                                @order.NetAmount?.ToString("N0")฿
                             </span>
                         </div>
 
@@ -685,9 +685,9 @@
             btn.textContent = 'ยืนยันอนุมัติ';
             if (data.ok) {
                 var netEl = document.getElementById('net-' + groupCheckinOrderId);
-                if (netEl) netEl.textContent = '฿' + Number(data.newNetAmount).toLocaleString('th-TH', { maximumFractionDigits: 0 });
+                if (netEl) netEl.textContent = Number(data.newNetAmount).toLocaleString('th-TH', { maximumFractionDigits: 0 }) + '฿';
                 if (groupCheckinTriggerBtn) {
-                    groupCheckinTriggerBtn.textContent = 'อนุมัติแล้ว -฿' + data.discount;
+                    groupCheckinTriggerBtn.textContent = 'อนุมัติแล้ว -' + data.discount + '฿';
                     groupCheckinTriggerBtn.disabled = true;
                 }
             } else {

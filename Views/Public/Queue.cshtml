@@ -10,6 +10,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Smart Cafe — Public Screen</title>
+    <link rel="icon" href="/coffee-removebg-preview.ico" type="image/x-icon" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800&family=Noto+Sans+Thai:wght@400;700&display=swap"
           rel="stylesheet" />
     <style>
@@ -106,10 +107,16 @@
         }
 
         .empty-ready {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
             text-align: center;
-            color: #6b7280;
-            padding: 4rem 2rem;
-            font-size: 1rem;
+            color: #feedd3;
+            font-size: 2rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
         }
 
         /* ===== Panel ขวา: เพิ่งเสร็จ ===== */
@@ -196,7 +203,7 @@
             <div class="queue-grid" id="queueGrid">
                 @if (readyOrders == null || !readyOrders.Any())
                 {
-                    <div class="empty-ready [grid-column:1/-1]">
+                    <div class="empty-ready">
                         ไม่มีออเดอร์พร้อมเสิร์ฟในขณะนี้
                     </div>
                 }
@@ -204,7 +211,7 @@
                 {
                     @foreach (var o in readyOrders)
                     {
-                        <div class="queue-card">
+                        <div class="queue-card" data-order-id="@o.OrderId">
                             <div class="queue-no">@o.QueueNumber</div>
                             @if (!string.IsNullOrEmpty((string)o.TableNumber))
                             {
@@ -280,17 +287,54 @@
         bar.style.display = 'block';
         setTimeout(function () { bar.style.display = 'none'; }, 4000);
 
-        // เพิ่ม card ลงในกริดโดยไม่ต้อง reload
         var grid = document.getElementById('queueGrid');
+
+        // ป้องกัน card ซ้ำ — ถ้ามี card ของ orderId นี้อยู่แล้วให้ข้ามไป
+        if (grid.querySelector('[data-order-id="' + data.orderId + '"]')) return;
+
         // ลบข้อความ "ไม่มีออเดอร์" ออกก่อน
         var empty = grid.querySelector('.empty-ready');
         if (empty) empty.remove();
 
         var card = document.createElement('div');
         card.className = 'queue-card';
+        card.setAttribute('data-order-id', data.orderId);
         card.innerHTML = '<div class="queue-no">' + data.queueNumber + '</div>'
                        + '<div><span class="ready-badge">พร้อมรับ</span></div>';
         grid.appendChild(card);
+    });
+
+    // ลบ card ออกทันทีเมื่อ Cashier กด "ส่งลูกค้าแล้ว"
+    connection.on("NotifyOrderCompleted", function (data) {
+        var grid = document.getElementById('queueGrid');
+        var card = grid.querySelector('[data-order-id="' + data.orderId + '"]');
+        if (card) card.remove();
+
+        // ถ้าไม่มี card เหลือแล้ว แสดงข้อความ empty
+        var remaining = grid.querySelectorAll('.queue-card');
+        if (remaining.length === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'empty-ready';
+            empty.textContent = 'ไม่มีออเดอร์พร้อมเสิร์ฟในขณะนี้';
+            grid.appendChild(empty);
+        }
+
+        // เพิ่มรายการในช่อง "เสร็จแล้ว" panel ขวา
+        var donePanel = document.querySelector('.done-panel');
+        var doneList  = donePanel ? donePanel.querySelectorAll('.done-item') : [];
+
+        // ถ้ามีครบ 5 แล้ว ลบอันเก่าสุดออก
+        if (doneList.length >= 5) doneList[doneList.length - 1].remove();
+
+        var firstItem = donePanel ? donePanel.querySelector('.done-item') : null;
+        var newItem   = document.createElement('div');
+        newItem.className = 'done-item';
+        newItem.innerHTML = '<span class="done-queue-no">' + data.queueNumber + '</span>';
+        if (firstItem) {
+            donePanel.insertBefore(newItem, firstItem);
+        } else if (donePanel) {
+            donePanel.appendChild(newItem);
+        }
     });
 
     connection.start()

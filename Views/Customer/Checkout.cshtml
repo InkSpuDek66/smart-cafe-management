@@ -47,7 +47,7 @@
                     }
                 </div>
                 <div class="font-bold text-[#6F4E37] text-[0.9rem] whitespace-nowrap">
-                    ฿@ci.ItemTotal.ToString("N0")
+                    @ci.ItemTotal.ToString("N0")฿
                 </div>
             </div>
         }
@@ -61,13 +61,13 @@
                     </div>
                     <div class="text-[0.72rem] text-green-600 mt-px">รายการโปรโมชั่น (ฟรี)</div>
                 </div>
-                <div class="font-bold text-green-600 text-[0.9rem]">฿0</div>
+                <div class="font-bold text-green-600 text-[0.9rem]">0฿</div>
             </div>
         }
 
         <div class="flex justify-between px-4 py-3.5 font-bold text-base text-[#3E2723]">
             <span>ยอดรวม</span>
-            <span class="font-serif text-[#6F4E37] text-[1.2rem]">฿@totalAmount.ToString("N0")</span>
+            <span class="font-serif text-[#6F4E37] text-[1.2rem]">@totalAmount.ToString("N0")฿</span>
         </div>
     </div>
 
@@ -114,7 +114,7 @@
             <!-- ปุ่มยืนยัน -->
             <button type="submit"
                     class="w-full bg-[#6F4E37] text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer mt-1">
-                สั่งซื้อ — ฿@totalAmount.ToString("N0")
+                สั่งซื้อ — @totalAmount.ToString("N0")฿
             </button>
         </form>
     </div>

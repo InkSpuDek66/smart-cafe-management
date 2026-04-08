@@ -101,7 +101,7 @@
         <h3 class="text-[#8D6748]">Public Screen (TV)</h3>
         <p>จอแสดงเลขคิวแบบ Real-time สำหรับลูกค้า อัปเดตอัตโนมัติผ่าน SignalR เมื่อออเดอร์พร้อมเสิร์ฟ</p>
         <div class="mt-4">
-            <span class="text-xs text-[#C8A97E] font-bold uppercase tracking-widest">Coming Soon</span>
+            <a href="/Public/Queue" target="_blank" class="btn btn-sm btn-outline">เปิดจอ Public Screen</a>
         </div>
     </div>
 
@@ -109,22 +109,19 @@
 
 <!-- Demo Quick Start Panel -->
 <div class="bg-white border-[1.5px] border-[#EFE0C9] rounded-xl p-6 mb-6">
-    <h2 class="font-['Playfair_Display'] text-[1.2rem] font-bold text-[#6F4E37] mb-4">เริ่มต้นใช้งาน Demo</h2>
-    <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+    <h2 class="font-['Playfair_Display'] text-[1.2rem] font-bold text-[#6F4E37] mb-1">เริ่มต้นใช้งาน Demo</h2>
+    <p class="text-xs text-gray-400 mb-4">สำหรับ Present ระบบ — เลือก flow ที่ต้องการทดสอบ</p>
+    <div class="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
 
-        <!-- Admin Flow -->
+        <!-- Staff / Admin Flow -->
         <div class="border border-gray-200 rounded-lg p-4">
-            <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Admin / Staff</div>
+            <div class="text-xs font-bold uppercase tracking-wider text-[#6F4E37] mb-3">Staff / Admin</div>
             <div class="flex flex-col gap-2">
                 @if (staffId == null)
                 {
-                    <a asp-controller="Admin" asp-action="Setup"
-                       class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
-                        1. ตั้งค่าบัญชีแรก (Setup)
-                    </a>
                     <a asp-controller="Account" asp-action="Login"
-                       class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
-                        2. Login พนักงาน
+                       class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
+                        Login พนักงาน
                     </a>
                 }
                 else
@@ -133,13 +130,17 @@
                        class="btn btn-sm bg-[#6F4E37] text-white border-none font-bold">
                         Dashboard
                     </a>
-                    <a asp-controller="Admin" asp-action="MenuCreate"
-                       class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
-                        เพิ่มเมนูสินค้า
-                    </a>
                     <a asp-controller="Admin" asp-action="Payments"
                        class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
                         ตรวจสอบสลิป
+                    </a>
+                    <a asp-controller="Pos" asp-action="Queue"
+                       class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
+                        POS — Order Queue
+                    </a>
+                    <a asp-controller="Pos" asp-action="Kds"
+                       class="btn btn-sm btn-outline border-[#6F4E37] text-[#6F4E37]">
+                        KDS (Barista)
                     </a>
                 }
             </div>
@@ -147,20 +148,50 @@
 
         <!-- Customer Flow -->
         <div class="border border-gray-200 rounded-lg p-4">
-            <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">ลูกค้า (จำลองสแกน QR)</div>
+            <div class="text-xs font-bold uppercase tracking-wider text-green-700 mb-3">ลูกค้า — สแกน QR โต๊ะ</div>
             <div class="flex flex-col gap-2">
                 <a href="/Customer/Menu?table=T01"
                    class="btn btn-sm bg-green-600 text-white border-none font-bold">
-                    โต๊ะ T01 — สั่งอาหาร
+                    โต๊ะ T01
                 </a>
                 <a href="/Customer/Menu?table=T02"
                    class="btn btn-sm btn-outline border-green-600 text-green-600">
-                    โต๊ะ T02 — สั่งอาหาร
+                    โต๊ะ T02
+                </a>
+                <a href="/Customer/Menu?table=T03"
+                   class="btn btn-sm btn-outline border-green-600 text-green-600">
+                    โต๊ะ T03
+                </a>
+                <a href="/Customer/Menu?table=T04"
+                   class="btn btn-sm btn-outline border-green-600 text-green-600">
+                    โต๊ะ T04
                 </a>
                 <a asp-controller="Account" asp-action="Register"
-                   class="btn btn-sm btn-outline border-gray-400 text-gray-500">
+                   class="btn btn-sm btn-outline border-gray-300 text-gray-500">
                     สมัครสมาชิก
                 </a>
+            </div>
+        </div>
+
+        <!-- Public Screen -->
+        <div class="border border-gray-200 rounded-lg p-4">
+            <div class="text-xs font-bold uppercase tracking-wider text-[#8D6748] mb-3">จอแสดงผล</div>
+            <div class="flex flex-col gap-2">
+                <a href="/Public/Queue" target="_blank"
+                   class="btn btn-sm bg-[#3E2723] text-white border-none font-bold">
+                    Public Screen (TV)
+                </a>
+                @if (staffId != null)
+                {
+                    <a asp-controller="Admin" asp-action="Reports"
+                       class="btn btn-sm btn-outline border-[#8D6748] text-[#8D6748]">
+                        รายงานยอดขาย
+                    </a>
+                    <a asp-controller="Admin" asp-action="Finance"
+                       class="btn btn-sm btn-outline border-[#8D6748] text-[#8D6748]">
+                        Finance
+                    </a>
+                }
             </div>
         </div>
 
