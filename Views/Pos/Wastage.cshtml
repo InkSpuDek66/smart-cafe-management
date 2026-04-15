@@ -124,61 +124,66 @@
             <div class="admin-card-body p-0">
                 @if (recentLogs == null || !recentLogs.Any())
                 {
-                    <div class="p-6 text-center text-gray-400 text-sm">
-                        ยังไม่มีประวัติ Wastage
-                    </div>
+                    <div class="p-8 text-center text-gray-400 text-sm">ยังไม่มีประวัติ Wastage</div>
                 }
                 else
                 {
-                    <table class="table table-zebra w-full text-[0.82rem]">
-                        <thead>
-                            <tr>
-                                <th class="text-gray-500 text-[0.72rem] uppercase">วัตถุดิบ</th>
-                                <th class="text-right text-gray-500 text-[0.72rem] uppercase">ปริมาณ</th>
-                                <th class="text-gray-500 text-[0.72rem] uppercase">หน่วย</th>
-                                <th class="text-gray-500 text-[0.72rem] uppercase">หมายเหตุ</th>
-                                <th class="text-gray-500 text-[0.72rem] uppercase">โดย</th>
-                                <th class="text-gray-500 text-[0.72rem] uppercase">เวลา</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var log in recentLogs)
-                            {
-                                bool hasNotes = !string.IsNullOrEmpty((string?)log.Notes);
-                                <tr>
-                                    <td class="text-gray-800">@log.IngredientName</td>
-                                    <td class="text-right text-red-600 font-bold font-['Inter'] tabular-nums">
-                                        @(Math.Abs((float)log.QuantityChange).ToString("N2"))
-                                    </td>
-                                    <!-- คอลัมน์หน่วย -->
-                                    <td class="text-gray-500 text-[0.78rem]">@log.Unit</td>
-                                    <!-- หมายเหตุ: กดขยายดูได้ -->
-                                    <td class="text-gray-500">
-                                        @if (hasNotes)
-                                        {
-                                            <button type="button"
-                                                    class="text-[0.75rem] text-blue-600 underline cursor-pointer bg-transparent border-none p-0"
-                                                    onclick="toggleNote(this)"
-                                                    data-notes="@log.Notes">
-                                                ดูหมายเหตุ
-                                            </button>
-                                            <div class="notes-expand hidden mt-1 text-[0.75rem] text-gray-700 bg-gray-50 rounded px-2 py-1 max-w-[160px] break-words">
-                                                @log.Notes
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-gray-300">—</span>
-                                        }
-                                    </td>
-                                    <td class="text-gray-500">@log.CreatedBy</td>
-                                    <td class="text-gray-500">
-                                        @(((DateTime?)log.CreatedAt)?.ToString("dd/MM HH:mm"))
-                                    </td>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[0.82rem]">
+                            <thead>
+                                <tr class="bg-[#f5ede3] border-b border-[#e8d5bf]">
+                                    <th class="text-left px-4 py-2.5 text-[0.72rem] font-bold text-[#6F4E37] uppercase tracking-wide">วัตถุดิบ</th>
+                                    <th class="text-right px-4 py-2.5 text-[0.72rem] font-bold text-[#6F4E37] uppercase tracking-wide">ปริมาณ</th>
+                                    <th class="text-left px-3 py-2.5 text-[0.72rem] font-bold text-[#6F4E37] uppercase tracking-wide">หน่วย</th>
+                                    <th class="text-left px-3 py-2.5 text-[0.72rem] font-bold text-[#6F4E37] uppercase tracking-wide">หมายเหตุ</th>
+                                    <th class="text-left px-3 py-2.5 text-[0.72rem] font-bold text-[#6F4E37] uppercase tracking-wide">โดย</th>
+                                    <th class="text-left px-3 py-2.5 text-[0.72rem] font-bold text-[#6F4E37] uppercase tracking-wide whitespace-nowrap">วันที่ / เวลา</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in recentLogs)
+                                {
+                                    bool hasNotes = !string.IsNullOrEmpty((string?)log.Notes);
+                                    DateTime? logDt = (DateTime?)log.CreatedAt;
+                                    <tr class="border-b border-[#f0e4d4] hover:bg-[#fdf8f3] transition-colors">
+                                        <td class="px-4 py-3 font-semibold text-[#3E2723]">@log.IngredientName</td>
+                                        <td class="px-4 py-3 text-right">
+                                            <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 font-bold font-['Inter'] tabular-nums px-2 py-0.5 rounded-md text-[0.8rem]">
+                                                −@(Math.Abs((float)log.QuantityChange).ToString("N2"))
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-3 text-gray-500 text-[0.78rem]">@log.Unit</td>
+                                        <td class="px-3 py-3">
+                                            @if (hasNotes)
+                                            {
+                                                <button type="button"
+                                                        class="text-[0.75rem] text-amber-700 underline cursor-pointer bg-transparent border-none p-0 font-semibold"
+                                                        onclick="toggleNote(this)">
+                                                    ดูหมายเหตุ
+                                                </button>
+                                                <div class="notes-expand hidden mt-1 text-[0.75rem] text-gray-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 max-w-[160px] break-words">
+                                                    @log.Notes
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-gray-300">—</span>
+                                            }
+                                        </td>
+                                        <td class="px-3 py-3 text-gray-600 text-[0.8rem]">@log.CreatedBy</td>
+                                        <td class="px-3 py-3 text-gray-500 text-[0.78rem] whitespace-nowrap">
+                                            @if (logDt.HasValue)
+                                            {
+                                                <span class="block font-semibold text-gray-700">@logDt.Value.ToString("dd/MM/yyyy")</span>
+                                                <span class="text-gray-400">@logDt.Value.ToString("HH:mm")</span>
+                                            }
+                                            else { <span class="text-gray-300">—</span> }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
             </div>
         </div>

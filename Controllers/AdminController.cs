@@ -207,7 +207,7 @@ public class AdminController : Controller
             _db.SaveChanges();
         }
 
-        var items = _db.Menuitems.OrderBy(m => m.Category).ThenBy(m => m.MenuName).ToList();
+        var items = _db.Menuitems.OrderBy(m => m.MenuItemId).ToList();
 
         var viewModel = new AdminMenuListViewModel
         {
@@ -1702,11 +1702,13 @@ public class AdminController : Controller
             .OrderBy(s => s.FirstName)
             .ToList();
 
-        ViewBag.Shifts        = shifts;
-        ViewBag.AllStaff      = allStaff;
-        ViewBag.OpenShift     = openShift;
+        ViewBag.Shifts         = shifts;
+        ViewBag.AllStaff       = allStaff;
+        ViewBag.OpenShift      = openShift;
         ViewBag.CurrentStaffId = currentStaffId;
-        ViewBag.RoleId        = roleId;
+        ViewBag.RoleId         = roleId;
+        // เวลา Login ของ session ปัจจุบัน — ใช้สำหรับปุ่มเช็คอินอัตโนมัติ
+        ViewBag.LoginTime = HttpContext.Session.GetString("LoginTime");
 
         return View();
     }

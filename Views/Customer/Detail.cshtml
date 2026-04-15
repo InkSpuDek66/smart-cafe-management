@@ -82,20 +82,27 @@
 
         @if (Model.ShowDrinkOptions)
         {
-            <!-- ===== ระดับความหวาน ===== -->
-            <div class="mb-4">
-                <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ระดับความหวาน</div>
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach (var opt in Model.SweetnessOptions)
-                    {
-                        <label class="cursor-pointer">
-                            <input type="radio" name="sweetness" value="@opt" class="hidden"
-                                   @(opt == "หวานปกติ" ? "checked" : "") />
-                            <span class="option-chip @(opt == "หวานปกติ" ? "selected" : "")">@opt</span>
-                        </label>
-                    }
+            <!-- ===== ระดับความหวาน (ไม่แสดงสำหรับ Soda) ===== -->
+            @if (Model.ShowSweetnessOptions)
+            {
+                <div class="mb-4">
+                    <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ระดับความหวาน</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (var opt in Model.SweetnessOptions)
+                        {
+                            <label class="cursor-pointer">
+                                <input type="radio" name="sweetness" value="@opt" class="hidden"
+                                       @(opt == "หวานปกติ" ? "checked" : "") />
+                                <span class="option-chip @(opt == "หวานปกติ" ? "selected" : "")">@opt</span>
+                            </label>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
+            else
+            {
+                <input type="hidden" name="sweetness" value="" />
+            }
 
             @if (Model.HasMilkOptions)
             {

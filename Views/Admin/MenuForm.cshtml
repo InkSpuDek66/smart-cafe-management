@@ -151,25 +151,45 @@
                     }
                 </div>
 
-                <!-- กลุ่มท็อปปิ้ง -->
+                <!-- ตัวเลือกเพิ่มเติมที่ลูกค้าเห็นตอนสั่ง -->
                 <div class="mb-4">
-                    <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
-                        กลุ่มท็อปปิ้ง (ToppingGroup)
+                    <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-2">
+                        ตัวเลือกเพิ่มเติมที่ลูกค้าเห็นตอนสั่ง
                     </label>
-                    <select name="ToppingGroup"
-                            class="select select-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-[0.9rem] outline-none">
-                        <option value="" selected="@(string.IsNullOrEmpty(Model.ToppingGroup))">
-                            ค่าเริ่มต้น — แสดงทุกตัวเลือก (นม + ขนาด)
-                        </option>
-                        <option value="Soda" selected="@(Model.ToppingGroup == "Soda")">
-                            Soda — ไม่มีตัวเลือกนม, มีท็อปปิ้งผลไม้แทน
-                        </option>
-                        <option value="NoMilk" selected="@(Model.ToppingGroup == "NoMilk")">
-                            NoMilk — ไม่มีตัวเลือกนมทุกชนิด (ไม่มีท็อปปิ้งผลไม้)
-                        </option>
-                    </select>
-                    <div class="text-[0.7rem] text-gray-400 mt-[3px]">
-                        กำหนดตัวเลือกที่แสดงหน้าเพิ่มลงตะกร้าฝั่งลูกค้า
+                    <div class="flex flex-col gap-2">
+                        <label class="flex items-start gap-3 p-3 rounded-lg border-[1.5px] cursor-pointer transition-colors
+                                      @(string.IsNullOrEmpty(Model.ToppingGroup) ? "border-[#6F4E37] bg-[#fef6ec]" : "border-[#d9c9b6] bg-white hover:bg-[#fefaf6]")">
+                            <input type="radio" name="ToppingGroup" value=""
+                                   @(string.IsNullOrEmpty(Model.ToppingGroup) ? "checked" : "")
+                                   class="mt-0.5 accent-[#6F4E37]" />
+                            <div>
+                                <div class="text-sm font-bold text-[#3E2723]">มาตรฐาน</div>
+                                <div class="text-[0.75rem] text-gray-500 mt-0.5">ลูกค้าเลือกได้: ขนาด (S/M/L) + ประเภทนม (นมสด / นมข้น / โอ๊ตมิลค์ ฯลฯ)</div>
+                                <div class="text-[0.72rem] text-amber-700 mt-0.5">ใช้กับ: กาแฟ, ชา, เครื่องดื่มนมทั่วไป</div>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-3 p-3 rounded-lg border-[1.5px] cursor-pointer transition-colors
+                                      @(Model.ToppingGroup == "Soda" ? "border-[#6F4E37] bg-[#fef6ec]" : "border-[#d9c9b6] bg-white hover:bg-[#fefaf6]")">
+                            <input type="radio" name="ToppingGroup" value="Soda"
+                                   @(Model.ToppingGroup == "Soda" ? "checked" : "")
+                                   class="mt-0.5 accent-[#6F4E37]" />
+                            <div>
+                                <div class="text-sm font-bold text-[#3E2723]">โซดา / น้ำผลไม้</div>
+                                <div class="text-[0.75rem] text-gray-500 mt-0.5">ลูกค้าเลือกได้: ขนาดแก้ว + ท็อปปิ้งผลไม้ — ไม่มีตัวเลือกนมและระดับความหวาน</div>
+                                <div class="text-[0.72rem] text-amber-700 mt-0.5">ใช้กับ: โซดา, น้ำผลไม้, เครื่องดื่มที่ไม่มีนม</div>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-3 p-3 rounded-lg border-[1.5px] cursor-pointer transition-colors
+                                      @(Model.ToppingGroup == "NoMilk" ? "border-[#6F4E37] bg-[#fef6ec]" : "border-[#d9c9b6] bg-white hover:bg-[#fefaf6]")">
+                            <input type="radio" name="ToppingGroup" value="NoMilk"
+                                   @(Model.ToppingGroup == "NoMilk" ? "checked" : "")
+                                   class="mt-0.5 accent-[#6F4E37]" />
+                            <div>
+                                <div class="text-sm font-bold text-[#3E2723]">ไม่มีตัวเลือกเพิ่มเติม</div>
+                                <div class="text-[0.75rem] text-gray-500 mt-0.5">ลูกค้าไม่เห็นตัวเลือกใดเลย — สั่งได้เลยโดยไม่ต้องเลือกอะไร</div>
+                                <div class="text-[0.72rem] text-amber-700 mt-0.5">ใช้กับ: เบเกอรี่, ขนม, อาหาร, เมนูที่ไม่มีตัวเลือก</div>
+                            </div>
+                        </label>
                     </div>
                 </div>
 
@@ -206,21 +226,48 @@
                     </div>
                 }
 
-                <!-- วันเวลา Seasonal -->
+                @{
+                    // แยก date + time ออกจากกัน เพื่อใช้ type="date" (browser แสดงปี พ.ศ. อัตโนมัติใน field)
+                    // และ type="time" ก่อน combine กลับใน JS ก่อน submit
+                    string sStartDate = "", sStartTime = "00:00";
+                    string sEndDate   = "", sEndTime   = "23:59";
+                    if (!string.IsNullOrEmpty(Model.SeasonStartDate) && DateTime.TryParse(Model.SeasonStartDate, out var dtStart))
+                    { sStartDate = dtStart.ToString("yyyy-MM-dd"); sStartTime = dtStart.ToString("HH:mm"); }
+                    if (!string.IsNullOrEmpty(Model.SeasonEndDate) && DateTime.TryParse(Model.SeasonEndDate, out var dtEnd))
+                    { sEndDate = dtEnd.ToString("yyyy-MM-dd"); sEndTime = dtEnd.ToString("HH:mm"); }
+                }
+                <!-- วันเวลา Seasonal — type="date" แสดงปี พ.ศ. ใน field เหมือนหน้าอื่น (.value คือ ISO ค.ศ. เสมอ) -->
                 <div id="seasonDateBox" class="@(Model.IsSeasonal ? "grid" : "hidden") grid-cols-2 gap-4 mb-4 bg-[#FDF6EC] p-[0.875rem] rounded-lg border border-dashed border-[#C8A97E]">
+                    <!-- hidden field รับค่า date+time ที่ combine แล้วก่อน submit -->
+                    <input type="hidden" name="SeasonStartDate" id="hiddenSeasonStart" value="@Model.SeasonStartDate" />
+                    <input type="hidden" name="SeasonEndDate"   id="hiddenSeasonEnd"   value="@Model.SeasonEndDate" />
                     <div>
                         <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
-                            วันเวลาเริ่ม
+                            วันที่เริ่ม
                         </label>
-                        <input type="datetime-local" name="SeasonStartDate" value="@Model.SeasonStartDate"
+                        <input type="date" id="seasonStartDatePicker" value="@sStartDate"
+                               class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none mb-1"
+                               onchange="showThaiDate('seasonStart')" />
+                        <input type="time" id="seasonStartTimePicker" value="@sStartTime"
                                class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none" />
+                        <div id="seasonStartThaiLabel" class="text-[0.72rem] text-amber-700 font-semibold mt-0.5 min-h-[1.1rem]">
+                            @if (sStartDate != "" && DateTime.TryParse(sStartDate, out var lblStart))
+                            { @($"{lblStart:dd/MM/}{lblStart.Year + 543} พ.ศ.") }
+                        </div>
                     </div>
                     <div>
                         <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
-                            วันเวลาสิ้นสุด
+                            วันที่สิ้นสุด
                         </label>
-                        <input type="datetime-local" name="SeasonEndDate" value="@Model.SeasonEndDate"
+                        <input type="date" id="seasonEndDatePicker" value="@sEndDate"
+                               class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none mb-1"
+                               onchange="showThaiDate('seasonEnd')" />
+                        <input type="time" id="seasonEndTimePicker" value="@sEndTime"
                                class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none" />
+                        <div id="seasonEndThaiLabel" class="text-[0.72rem] text-amber-700 font-semibold mt-0.5 min-h-[1.1rem]">
+                            @if (sEndDate != "" && DateTime.TryParse(sEndDate, out var lblEnd))
+                            { @($"{lblEnd:dd/MM/}{lblEnd.Year + 543} พ.ศ.") }
+                        </div>
                     </div>
                 </div>
 
@@ -240,6 +287,27 @@
 </div>
 
 <script>
+    // แสดง label พ.ศ. หลังเลือกวันจาก picker (picker ส่งค่า ISO ค.ศ. เสมอ → บวก 543)
+    function showThaiDate(prefix) {
+        var dateEl  = document.getElementById(prefix + 'DatePicker');
+        var labelEl = document.getElementById(prefix + 'ThaiLabel');
+        if (!dateEl || !dateEl.value) { if (labelEl) labelEl.textContent = ''; return; }
+        var parts  = dateEl.value.split('-');   // yyyy-MM-dd
+        var yearCE = parseInt(parts[0], 10);
+        var label  = parts[2] + '/' + parts[1] + '/' + (yearCE + 543) + ' พ.ศ.';
+        if (labelEl) labelEl.textContent = label;
+    }
+
+    // combine type="date" + type="time" → hidden field ก่อน submit
+    document.querySelector('form').addEventListener('submit', function() {
+        var d1 = document.getElementById('seasonStartDatePicker');
+        var t1 = document.getElementById('seasonStartTimePicker');
+        var d2 = document.getElementById('seasonEndDatePicker');
+        var t2 = document.getElementById('seasonEndTimePicker');
+        if (d1 && d1.value) document.getElementById('hiddenSeasonStart').value = d1.value + 'T' + (t1.value || '00:00');
+        if (d2 && d2.value) document.getElementById('hiddenSeasonEnd').value   = d2.value + 'T' + (t2.value || '23:59');
+    });
+
     function toggleSeasonDates(checkbox) {
         var box = document.getElementById('seasonDateBox');
         if (checkbox.checked) {

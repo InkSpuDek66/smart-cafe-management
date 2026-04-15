@@ -1,4 +1,16 @@
 @* Views/Admin/Promotions.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงและจัดการโปรโมชั่นทั้งหมด (สำหรับ Admin)
+- แสดงข้อมูล: ชื่อโปรโมชั่น, เงื่อนไข, รางวัล, จำนวนครั้งที่ถูกใช้, ปุ่มแก้ไข, ปุ่มลบ
+- ฟอร์มเพิ่ม/แก้ไขโปรโมชั่น (แสดงเมื่อคลิกปุ่ม เพิ่มโปรโมชั่น หรือ แก้ไข)
+- เงื่อนไขและรางวัลมีหลายแบบ (เช่น ยอดครบ X บาท, สะสมครบ Y ดวง, วันเกิดสมาชิก, มาเป็นกลุ่ม ≥Z คน + Check-in, เมนูตามเทศกาล) และแต่ละแบบจะมีฟิลด์ที่ต้องกรอกต่างกัน
+- ใช้ JavaScript ช่วยจัดการแสดง/ซ่อนฟิลด์ในฟอร์มตามประเภทโปรโมชั่นที่เลือก
+- URL เข้าถึง: /Admin/Promotions
+- Method: GET (แสดงรายการโปรโมชั่น), POST (เพิ่ม/แก้ไขโปรโมชั่น), POST (ลบโปรโมชั่น)
+- ViewModel: List<Promotion> (ส่งมาจาก Controller พร้อมข้อมูลโปรโมชั่นทั้งหมด)
+- Controller Action: AdminController.Promotions (GET/POST)
+------------------------------------------------ *@
+
 @model List<Project_CSI402_T2_Y3.Models.Db.Promotion>
 @{
     ViewData["Title"] = "โปรโมชั่น";
@@ -142,13 +154,13 @@
 
                     <!-- วันเริ่ม-สิ้นสุด (สำหรับ seasonal) -->
                     <div id="field_startDate" class="hidden">
-                        <label class="block text-sm font-bold text-gray-700 mb-1">วันเริ่มเทศกาล <span class="font-normal text-gray-400">(ค.ศ.)</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">วันเริ่มเทศกาล <span class="font-normal text-gray-400">(พ.ศ.)</span></label>
                         <input type="date" name="startDate" id="fStartDate"
                                class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-white outline-none focus:border-[#6F4E37]" />
                     </div>
 
                     <div id="field_endDate" class="hidden">
-                        <label class="block text-sm font-bold text-gray-700 mb-1">วันสิ้นสุดเทศกาล <span class="font-normal text-gray-400">(ค.ศ.)</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">วันสิ้นสุดเทศกาล <span class="font-normal text-gray-400">(พ.ศ.)</span></label>
                         <input type="date" name="endDate" id="fEndDate"
                                class="w-full border border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-white outline-none focus:border-[#6F4E37]" />
                         <div class="text-[0.7rem] text-gray-400 mt-0.5">เมนู Seasonal จะซ่อนตัวเองหลังวันนี้โดยอัตโนมัติ</div>

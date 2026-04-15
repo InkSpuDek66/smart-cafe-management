@@ -66,6 +66,10 @@ public class MenuDetailViewModel
     // แสดง Options เฉพาะเครื่องดื่ม — เบเกอรี่และของทานเล่นไม่มีตัวเลือก
     public bool ShowDrinkOptions => !IsNonDrinkCategory(Item?.Category);
 
+    // ระดับความหวานไม่แสดงสำหรับโซดา (Soda group ไม่ใช้ความหวาน)
+    public bool ShowSweetnessOptions =>
+        (Item?.ToppingGroup ?? "").ToLowerInvariant() != "soda";
+
     private static bool IsNonDrinkCategory(string? category)
     {
         if (string.IsNullOrEmpty(category)) return false;

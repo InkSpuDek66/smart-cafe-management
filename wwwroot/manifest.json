@@ -1,0 +1,15 @@
+{
+  "name": "Smart Cafe",
+  "short_name": "Smart Cafe",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF6EC",
+  "theme_color": "#6F4E37",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

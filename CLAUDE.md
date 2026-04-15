@@ -1,7 +1,7 @@
 # Smart Cafe Management System — CLAUDE.md
 
 ไฟล์นี้ให้ Context สำหรับ Claude Code ในการทำงานกับโปรเจกต์นี้
-อ้างอิง README.md v7.0 สำหรับรายละเอียดทั้งหมด
+อ้างอิง README.md v8.0 สำหรับรายละเอียดทั้งหมด
 
 ---
 
@@ -30,7 +30,7 @@
 
 ---
 
-## แผนพัฒนา 5 วัน (1-5 เมษายน 2026)
+## บันทึกการพัฒนา 5 วัน (1-5 เมษายน 2026 — เสร็จสิ้นแล้ว)
 
 ### วันที่ 1 — 1 เมษายน: POS Interface + KDS
 - `PosController.cs` + `Views/Pos/Queue.cshtml` — Order Queue (Split View: Unpaid ซ้าย / Paid ขวา)
@@ -78,12 +78,12 @@
 | Database | MySQL 9.6 — ชื่อ DB: `CSI402DB` |
 | Database Tool | Azure Data Studio |
 | Real-time | SignalR |
-| Background Jobs | Hangfire |
-| Authentication | JWT |
+| Background Jobs | In-process (ตรวจสอบ `ReservedUntil` ใน Controller — ไม่ใช้ Hangfire) |
+| Authentication | Session-based (`HttpContext.Session`) |
 | CSS Framework | Tailwind CSS + DaisyUI |
 | Icon Library | Heroicons |
 | Template Engine | Razor Views (.cshtml) |
-| File Storage | Cloud Storage (รูปสลิปที่ลูกค้าอัปโหลด) |
+| File Storage | Local (`wwwroot/uploads/slips/` และ `wwwroot/uploads/menus/`) |
 
 ---
 
@@ -252,9 +252,11 @@ GET    /api/reports/wastage           ของเสียแยกตามเ
 ---
 
 ## ไฟล์สำคัญในโปรเจกต์
-- `README.md` — Design Blueprint ฉบับสมบูรณ์ v7.0
+- `README.md` — Design Blueprint ฉบับสมบูรณ์ v8.0
 - `SQLQuery_project.sql` — Database Schema + Seed Data ทั้งหมด (รันครั้งเดียวได้ครบ)
 - `SQLSeedDemo.sql` — ข้อมูลตัวอย่างสำหรับ Demo (รันต่อจาก SQLQuery_project.sql)
+- `SPU_CSI402_Project_T2_Y3.session.sql` — คำสั่ง SQL ที่รันได้ทันทีสำหรับการเปลี่ยนแปลงแต่ละรอบ
+- `รายงานความคืบหน้าโปรเจกต์-Project_Status_Report.md` — รายงานสถานะและความคืบหน้าโปรเจกต์
 - `CLAUDE.md` — ไฟล์นี้
 
 ---

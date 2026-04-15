@@ -517,6 +517,21 @@
                 </div>
             }
 
+            @if (roleId is 3 or 5)
+            {
+                <div class="nav-section-title">พนักงาน</div>
+                <div class="nav-item">
+                    <a asp-controller="Admin" asp-action="Shifts"
+                       class="@(controller == "Admin" && action == "Shifts" ? "active" : "")">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        กะทำงาน
+                    </a>
+                </div>
+            }
+
             <!-- Public Screen — เปิดแท็บใหม่ ไม่ต้อง Login -->
             <div class="nav-section-title">จอแสดงผล</div>
             <div class="nav-item">

@@ -1,7 +1,7 @@
 # Smart Cafe Management System: Design Blueprint (POS & Mobile Web App)
 
-**เวอร์ชัน:** v7.0
-**อัปเดตล่าสุด:** 26/03/2026
+**เวอร์ชัน:** v8.0
+**อัปเดตล่าสุด:** 15/04/2026
 
 ---
 
@@ -32,7 +32,7 @@
 
 | โปรแกรม | เวอร์ชันขั้นต่ำ | หมายเหตุ |
 | :--- | :--- | :--- |
-| [.NET SDK](https://dotnet.microsoft.com/download) | 8.0 | ตรวจสอบด้วย `dotnet --version` |
+| [.NET SDK](https://dotnet.microsoft.com/download) | 10.0 | ตรวจสอบด้วย `dotnet --version` |
 | [MySQL Server](https://dev.mysql.com/downloads/mysql/) | 8.0 | ใช้ port 3306 (default) |
 | [Azure Data Studio](https://azure.microsoft.com/en-us/products/data-studio) หรือ MySQL Workbench | — | สำหรับรัน SQL Script |
 
@@ -727,9 +727,9 @@ Background Job (ทุกวัน เวลา 00:00):
 | Database | MySQL 9.6 (csi402db) |
 | Database Tool | Azure Data Studio |
 | Real-time | SignalR (WebSocket) สำหรับ Order Status และ Public Screen |
-| Background Jobs | Hangfire สำหรับ Stock Reservation Rollback และ Birthday Promotion |
-| Authentication | JWT (JSON Web Token) |
-| File Storage | Cloud Storage (AWS S3 หรือ Azure Blob) สำหรับรูปสลิป |
+| Background Jobs | In-process (ตรวจสอบ `ReservedUntil` ใน Controller — ไม่ใช้ Hangfire) |
+| Authentication | Session-based (`HttpContext.Session`) |
+| File Storage | Local (`wwwroot/uploads/slips/` และ `wwwroot/uploads/menus/`) |
 
 ### Frontend
 | เทคโนโลยี | รายละเอียด |
@@ -786,7 +786,7 @@ Background Job (ทุกวัน เวลา 00:00):
 | เทคโนโลยี | รายละเอียด |
 | :--- | :--- |
 | Database Hosting | MySQL บน Local / Cloud |
-| File Storage | Cloud Storage สำหรับรูปสลิปที่ลูกค้าอัปโหลด |
+| File Storage | Local Storage (`wwwroot/uploads/`) สำหรับรูปสลิปและรูปเมนู |
 | Web Server | Kestrel (built-in ASP.NET Core) |
 
 ---
@@ -826,8 +826,8 @@ graph LR
 
     subgraph "Infrastructure"
         N["MySQL 9.6 (csi402db)"]
-        O["Cloud Storage (Slip Images)"]
-        P["Background Jobs (Hangfire)"]
+        O["Local Storage (wwwroot/uploads/)"]
+        P["Background Jobs (In-process)"]
         Q["SignalR Hub"]
     end
 
@@ -1150,4 +1150,4 @@ sequenceDiagram
 
 ---
 
-*เอกสารนี้เป็นพิมพ์เขียวฉบับสมบูรณ์ (v7.0)*
+*เอกสารนี้เป็นพิมพ์เขียวฉบับสมบูรณ์ (v8.0)*

@@ -59,6 +59,8 @@ public class AccountController : Controller
         HttpContext.Session.SetString("Username", staff.Username ?? "");
         HttpContext.Session.SetInt32("StaffRoleId", staff.StaffRoleId ?? 0);
         HttpContext.Session.SetString("FullName", $"{staff.FirstName} {staff.LastName}");
+        // บันทึกเวลา Login สำหรับใช้ auto เช็คอินกะทำงาน
+        HttpContext.Session.SetString("LoginTime", DateTime.Now.ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture));
 
         return RedirectToAction("Index", "Home");
     }

@@ -1,8 +1,14 @@
 @* Views/Customer/ChangePhone.cshtml *@
 @* -------------------------------------------------------
-   Flow 2 ขั้นตอน:
-   - Step 1: POST verifyFirstName, verifyLastName, verifyBirthDate → ตรวจตัวตน
-   - Step 2: POST newPhone, confirmPhone → เปลี่ยนเบอร์
+- หน้าเปลี่ยนเบอร์โทรศัพท์ (สำหรับลูกค้า)
+- STEP 1: ยืนยันตัวตนด้วยการกรอกชื่อ, นามสกุล, วันเกิด (ข้อมูลต้องตรงกับที่สมัครไว้)
+- STEP 2: กรอกเบอร์โทรใหม่และยืนยันเบอร์ใหม่อีกครั้ง
+- แสดงข้อความผิดพลาดหากข้อมูลไม่ถูกต้อง เช่น ยืนยันตัวตนไม่สำเร็จ, เบอร์โทรใหม่ไม่ตรงกัน หรือรูปแบบเบอร์โทรไม่ถูกต้อง
+- หลังเปลี่ยนเบอร์สำเร็จให้แสดงข้อความ "เปลี่ยนเบอร์โทรสำเร็จ" และลิงก์กลับไปที่หน้า EditProfile
+- ใช้ Layout เดียวกับหน้าอื่นๆ ใน Customer (เช่น EditProfile) เพื่อความสอดคล้อง
+- URL เข้าถึง: /Customer/ChangePhone
+- Method: POST (ยืนยันตัวตนและเปลี่ยนเบอร์)
+- Controller Action: CustomerController.ChangePhone (POST)
    ------------------------------------------------------- *@
 @{
     ViewData["Title"] = "เปลี่ยนเบอร์โทร";
@@ -62,7 +68,7 @@
                         <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">วันเกิด *</label>
                         <input type="date" name="verifyBirthDate" required
                                class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
-                        <div class="text-[0.68rem] text-amber-700 mt-0.5">กรอกปี ค.ศ. ตรงกับที่สมัครไว้ เช่น 1995 (ปีไทยลบ 543)</div>
+                        <div class="text-[0.68rem] text-amber-700 mt-0.5">กรอกวันเกิด ปี ค.ศ. ตรงกับที่สมัครไว้ เช่น 1995</div>
                     </div>
 
                 </div>

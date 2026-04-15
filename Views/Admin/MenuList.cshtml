@@ -36,6 +36,7 @@
         <table class="admin-table w-full border-collapse">
             <thead>
                 <tr>
+                    <th class="w-[52px] text-center">#</th>
                     <th class="w-[60px]">รูป</th>
                     <th>ชื่อเมนู</th>
                     <th>หมวด</th>
@@ -49,6 +50,12 @@
                 @foreach (var item in Model.Items)
                 {
                     <tr>
+                        <td class="text-center">
+                            <span class="font-['Inter'] text-[0.78rem] font-bold text-gray-400 tabular-nums select-all cursor-text"
+                                  title="รหัสเมนู — คัดลอกไปใช้ที่หน้าโปรโมชั่น">
+                                @item.MenuItemId
+                            </span>
+                        </td>
                         <td>
                             @if (!string.IsNullOrEmpty(item.ImageUrl))
                             {
@@ -131,7 +138,7 @@
                 @if (!Model.Items.Any())
                 {
                     <tr>
-                        <td colspan="7" class="text-center text-gray-400 py-10">ยังไม่มีเมนู</td>
+                        <td colspan="8" class="text-center text-gray-400 py-10">ยังไม่มีเมนู</td>
                     </tr>
                 }
             </tbody>
