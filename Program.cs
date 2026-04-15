@@ -21,8 +21,10 @@ builder.Services.AddDistributedMemoryCache();
 // ลงทะเบียน Session สำหรับเก็บข้อมูลหลัง Login
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromHours(8);   // Session หมดอายุหลัง 8 ชั่วโมงไม่ใช้งาน
-    options.Cookie.HttpOnly = true;                 // ป้องกัน JavaScript เข้าถึง Cookie
+    // 20 นาที — ครอบ flow ทั้งหมด: เปิดเมนู → เลือก → ชำระ → รอรับสินค้า
+    // การ logout จริงทำผ่าน JS countdown (NotifyOrderReady) ไม่ใช่ session timeout
+    options.IdleTimeout        = TimeSpan.FromMinutes(20);
+    options.Cookie.HttpOnly    = true;
     options.Cookie.IsEssential = true;
 });
 

@@ -1,57 +1,385 @@
 @* Views/Customer/Rewards.cshtml *@
-@* ------------------------------------------------
-- หน้ารางวัลแต้มสะสม (สำหรับลูกค้า)
-- แสดงรายการรางวัลที่สามารถแลกได้
-- URL เข้าถึง: /Customer/Rewards
-- Method: GET
-- ViewModel: List<Reward> (ส่งมาจาก Controller)
-- Controller Action: CustomerController.Rewards (GET)
------------------------------------------------- *@
-
 @using Project_CSI402_T2_Y3.Models.Db
 @model List<Reward>
 @{
-    ViewData["Title"] = "รางวัลแต้มสะสม";
+    ViewData["Title"] = "Stamp Card";
     Layout = "_MobileLayout";
+
+    int stamps       = (int)(ViewBag.MemberStamps ?? 0);
+    int memberPoints = (int)(ViewBag.MemberPoints ?? 0);
+    string memberName = ViewBag.MemberName as string ?? "";
+
+    int  readyToRedeem  = stamps / 10;
+    int  progressOnCard = stamps % 10;
+    bool isComplete     = stamps >= 10;
+    int  filled         = isComplete ? 10 : progressOnCard;
+    int  pct            = isComplete ? 100 : progressOnCard * 10;
+
+    var  stampHistory = ViewBag.StampHistory as List<Project_CSI402_T2_Y3.Models.Db.Pointtransaction>;
+    bool isMember     = !string.IsNullOrEmpty(memberName);
 }
 
-<div class="p-4">
-    <h2 class="font-['Playfair_Display'] text-[1.25rem] font-bold text-[#3E2723] mb-1">รางวัลแต้มสะสม</h2>
-    <p class="text-[0.8rem] text-[#8D6748] mb-5">
-        สะสมแต้มจากการสั่งซื้อ 10 บาท = 1 แต้ม — แจ้งพนักงานเพื่อแลกรางวัล
-    </p>
+<style>
+    /* ===== Stamp Card styles ===== */
+    .stamp-card {
+        width: 100%;
+        border-radius: 20px;
+        overflow: hidden;
+        position: relative;
+        background: linear-gradient(135deg, #5C3317 0%, #3E2723 45%, #1C0F0A 100%);
+        box-shadow: 0 8px 32px rgba(62,39,35,0.45), 0 2px 8px rgba(0,0,0,0.3);
+        /* ใช้ padding แทน aspect-ratio เพื่อให้ content ไม่ล้นทุก screen size */
+        padding: 16px 18px 14px;
+    }
+    /* ลาย noise พื้นหลัง */
+    .stamp-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            radial-gradient(ellipse at 10% 30%, rgba(212,169,106,0.15) 0%, transparent 55%),
+            radial-gradient(ellipse at 90% 70%, rgba(255,255,255,0.06) 0%, transparent 50%);
+        pointer-events: none;
+    }
+    /* เส้น shimmer บนสุด */
+    .stamp-card::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+        pointer-events: none;
+    }
+    .stamp-dot-filled {
+        width: 100%;
+        aspect-ratio: 1/1;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #fbbf24, #d97706);
+        box-shadow: 0 2px 6px rgba(217,119,6,0.6), inset 0 1px 0 rgba(255,255,255,0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .stamp-dot-empty {
+        width: 100%;
+        aspect-ratio: 1/1;
+        border-radius: 50%;
+        border: 1.5px dashed rgba(255,255,255,0.2);
+        background: rgba(255,255,255,0.04);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .stamp-progress-bar {
+        height: 3px;
+        border-radius: 99px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.1);
+    }
+    .stamp-progress-fill {
+        height: 100%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #f59e0b, #fde68a);
+        box-shadow: 0 0 6px rgba(251,191,36,0.7);
+        transition: width 0.5s ease;
+    }
+    /* เงาใต้บัตร */
+    .stamp-card-shadow {
+        height: 12px;
+        margin: 0 20px;
+        border-radius: 0 0 16px 16px;
+        background: linear-gradient(180deg, rgba(62,39,35,0.3), transparent);
+        filter: blur(6px);
+        transform: translateY(-6px);
+    }
+    /* badge สิทธิ์ */
+    .stamp-badge-ready {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        box-shadow: 0 2px 10px rgba(245,158,11,0.5);
+        border-radius: 99px;
+        padding: 3px 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+</style>
 
-    <!-- แบนเนอร์วิธีแลก — เก็บ linear-gradient เพราะ Tailwind ไม่มี equivalent -->
-    <div class="flex items-center gap-3.5 rounded-2xl px-5 py-4 mb-6 text-white"
-         style="background:linear-gradient(135deg,#6F4E37,#3E2723);">
-        <svg class="w-8 h-8 flex-shrink-0 opacity-85" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-        </svg>
+<div class="px-4 pt-4 pb-24">
+
+    @* ===== Header ===== *@
+    <div class="flex items-start justify-between mb-4">
         <div>
-            <div class="font-bold text-[0.95rem]">วิธีแลกรางวัล</div>
-            <div class="text-[0.78rem] opacity-80 mt-0.5 leading-relaxed">
-                แจ้งพนักงานที่เคาน์เตอร์ พร้อมเบอร์โทรที่สมัครสมาชิก
-                พนักงานจะตรวจสอบแต้มและดำเนินการแลกให้
-            </div>
+            <h2 class="font-serif text-[1.2rem] font-bold text-[#3E2723]">Stamp Card</h2>
+            <p class="text-[0.75rem] text-[#8D6748] mt-0.5">ทุกการสั่งซื้อ = 1 ดวง · ครบ 10 ดวง รับเมนูฟรี 1 รายการ</p>
         </div>
+        @if (isMember)
+        {
+            <a href="@Url.Action("EditProfile", "Customer")"
+               class="flex items-center gap-1 text-[0.72rem] font-bold text-[#6F4E37] no-underline bg-[#FDF6EC] border border-[#d9c9b6] rounded-lg px-2.5 py-1.5 flex-shrink-0 mt-0.5">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                แก้ไขโปรไฟล์
+            </a>
+        }
     </div>
 
-    @if (!Model.Any())
+    @if (!isMember)
     {
-        <div class="text-center py-12 text-gray-400">
-            <p>ยังไม่มีรางวัลในขณะนี้</p>
+        @* ===== Guest — ยังไม่ได้ login ===== *@
+        <div class="stamp-card mb-2 flex flex-col items-center justify-center gap-3 text-center px-6">
+            <svg class="w-10 h-10 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
+            <div>
+                <div class="text-white font-bold text-sm">กรุณาเข้าสู่ระบบสมาชิก</div>
+                <div class="text-white/45 text-[0.72rem] mt-1">ใส่เบอร์โทรตอนสั่งซื้อเพื่อสะสม Stamp</div>
+            </div>
         </div>
+        <div class="stamp-card-shadow mb-4"></div>
     }
     else
     {
-        <!-- Grid รางวัล -->
-        <div class="grid grid-cols-2 gap-3.5">
+        @* ===== Stamp Card ===== *@
+        <div class="stamp-card mb-0">
+            <div class="relative flex flex-col gap-3">
+
+                @* แถวบน: แบรนด์ + สถานะ *@
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="rounded-lg flex items-center justify-center flex-shrink-0"
+                             style="width:32px;height:32px;background:rgba(212,169,106,0.2);border:1px solid rgba(212,169,106,0.35);">
+                            <svg style="width:55%;height:55%;color:#fbbf24;" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M2 21h18v-2H2v2zm6-4h6c3.31 0 6-2.69 6-6V5H2v6c0 3.31 2.69 6 6 6zm6-10h2v4h-2V7z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-white font-bold leading-none text-[0.78rem]"
+                                 style="letter-spacing:0.05em;">SMART CAFE</div>
+                            <div class="text-amber-400/60 leading-none mt-0.5 text-[0.58rem]"
+                                 style="letter-spacing:0.12em;text-transform:uppercase;">Loyalty Card</div>
+                        </div>
+                    </div>
+
+                    @if (isComplete)
+                    {
+                        <div class="stamp-badge-ready">
+                            <svg style="width:10px;height:10px;color:white;" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <span class="text-white font-bold" style="font-size:0.65rem;">ฟรี @readyToRedeem รายการ</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-right">
+                            <span class="text-white font-bold tabular-nums" style="font-family:'Inter',sans-serif;font-size:1.25rem;">@progressOnCard</span>
+                            <span class="text-white/35" style="font-size:0.65rem;">/10</span>
+                            <div class="text-white/35" style="font-size:0.55rem;">ดวงสะสม</div>
+                        </div>
+                    }
+                </div>
+
+                @* แถวกลาง: stamp grid 5+5 *@
+                <div class="flex flex-col" style="gap:6px;">
+                    @* แถว 1-5 *@
+                    <div class="grid grid-cols-5" style="gap:6px;">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            bool f = i <= filled;
+                            <div class="@(f ? "stamp-dot-filled" : "stamp-dot-empty")">
+                                @if (f)
+                                {
+                                    <svg style="width:50%;height:50%;color:white;" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M2 21h18v-2H2v2zm6-4h6c3.31 0 6-2.69 6-6V5H2v6c0 3.31 2.69 6 6 6zm6-10h2v4h-2V7z"/>
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <span style="font-family:'Inter',sans-serif;font-size:0.55rem;font-weight:700;color:rgba(255,255,255,0.2);">@i</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                    @* แถว 6-10 *@
+                    <div class="grid grid-cols-5" style="gap:6px;">
+                        @for (int i = 6; i <= 10; i++)
+                        {
+                            bool f = i <= filled;
+                            <div class="@(f ? "stamp-dot-filled" : "stamp-dot-empty")">
+                                @if (f)
+                                {
+                                    <svg style="width:50%;height:50%;color:white;" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M2 21h18v-2H2v2zm6-4h6c3.31 0 6-2.69 6-6V5H2v6c0 3.31 2.69 6 6 6zm6-10h2v4h-2V7z"/>
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <span style="font-family:'Inter',sans-serif;font-size:0.55rem;font-weight:700;color:rgba(255,255,255,0.2);">@i</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* แถวล่าง: progress bar + ชื่อ/แต้ม *@
+                <div>
+                    <div class="stamp-progress-bar mb-2">
+                        <div class="stamp-progress-fill" style="width:@pct%;"></div>
+                    </div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-white/35 uppercase tracking-widest" style="font-size:0.52rem;">MEMBER</div>
+                            <div class="text-white font-bold tracking-wide" style="font-size:0.78rem;">
+                                @memberName.ToUpper()
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-white/35 uppercase tracking-widest" style="font-size:0.52rem;">POINTS</div>
+                            <div class="text-amber-300 font-bold tabular-nums" style="font-family:'Inter',sans-serif;font-size:0.82rem;">
+                                @memberPoints.ToString("N0")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div class="stamp-card-shadow mb-4"></div>
+
+        @* ===== แบนเนอร์สิทธิ์ ===== *@
+        @if (isComplete)
+        {
+            <div class="rounded-2xl px-4 py-3.5 mb-4 flex items-center gap-3"
+                 style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7;">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                     style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 2px 8px rgba(16,185,129,0.4);">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="font-bold text-green-800 text-[0.9rem]">มีสิทธิ์รับเมนูฟรี @readyToRedeem รายการ!</div>
+                    <div class="text-[0.73rem] text-green-700 mt-0.5">เลือกเมนูได้ที่ขั้นตอน Checkout ครั้งถัดไป</div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="bg-[#FDF6EC] border border-[#EFE0C9] rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="text-[0.8rem] text-[#6F4E37]">
+                    สะสมอีก
+                    <span class="font-bold text-[#3E2723] text-[0.95rem] tabular-nums"
+                          style="font-family:'Inter',sans-serif;"> @(10 - progressOnCard) </span>
+                    ดวง รับเมนูฟรี 1 รายการ
+                </div>
+            </div>
+        }
+
+        @* ===== ประวัติ Stamp ===== *@
+        @if (stampHistory != null && stampHistory.Any())
+        {
+            <div class="bg-white rounded-2xl border border-[#EFE0C9] overflow-hidden mb-4">
+                <div class="px-4 py-3 flex items-center gap-2 border-b border-[#f0e8de]">
+                    <svg class="w-4 h-4 text-[#8D6748]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="font-bold text-[0.85rem] text-[#3E2723]">ประวัติ Stamp</span>
+                </div>
+                <div class="divide-y divide-[#faf5ef]">
+                    @foreach (var tx in stampHistory)
+                    {
+                        bool isEarn = tx.TypeId == 3;
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                                     style="background:@(isEarn ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.08)");">
+                                    @if (isEarn)
+                                    {
+                                        <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M2 21h18v-2H2v2zm6-4h6c3.31 0 6-2.69 6-6V5H2v6c0 3.31 2.69 6 6 6zm6-10h2v4h-2V7z"/>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    }
+                                </div>
+                                <div>
+                                    <div class="text-[0.82rem] font-semibold text-[#3E2723]">
+                                        @(isEarn ? "รับ Stamp" : "ใช้สิทธิ์เมนูฟรี")
+                                    </div>
+                                    <div class="text-[0.68rem] text-gray-400 mt-0.5">
+                                        @tx.CreatedAt?.ToString("dd MMM yy · HH:mm")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="font-bold tabular-nums text-[0.9rem] @(isEarn ? "text-amber-500" : "text-red-400")"
+                                 style="font-family:'Inter',sans-serif;">
+                                @(isEarn ? "+" : "-")@tx.Amount
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+
+    @* ===== วิธีสะสม (แสดงเสมอ) ===== *@
+    <div class="bg-white rounded-2xl border border-[#EFE0C9] px-4 py-4 mb-4">
+        <div class="font-bold text-[0.85rem] text-[#3E2723] mb-3">วิธีสะสมและใช้สิทธิ์</div>
+        <div class="space-y-3">
+            @{
+                var steps = new (string icon, string title, string desc)[]
+                {
+                    ("M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",
+                     "สั่งซื้อ",
+                     "ชำระเงินครบ 1 ออเดอร์ = 1 ดวง (ไม่จำกัดจำนวนเมนู)"),
+                    ("M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+                     "ครบ 10 ดวง",
+                     "ระบบแจ้งสิทธิ์อัตโนมัติที่หน้า Stamp Card นี้"),
+                    ("M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",
+                     "ใช้สิทธิ์ที่ Checkout",
+                     "เลือกเมนูฟรี 1 รายการ 1 ชิ้นในออเดอร์ถัดไป")
+                };
+            }
+            @foreach (var (icon, title, desc) in steps)
+            {
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-[#FDF6EC] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg class="w-4 h-4 text-[#6F4E37]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="@icon"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-[0.8rem] font-bold text-[#3E2723]">@title</div>
+                        <div class="text-[0.72rem] text-[#8D6748] mt-0.5 leading-relaxed">@desc</div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ===== รางวัลแลกแต้ม ===== *@
+    @if (Model.Any())
+    {
+        <div class="font-bold text-[0.9rem] text-[#3E2723] mb-3">รางวัลแลกแต้มสะสม</div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
             @foreach (var reward in Model)
             {
                 <div class="bg-white rounded-2xl border border-[#EFE0C9] overflow-hidden shadow-sm">
-
-                    <!-- รูปรางวัล -->
                     <div class="w-full overflow-hidden" style="aspect-ratio:4/3;">
                         @if (!string.IsNullOrEmpty(reward.ImageUrl))
                         {
@@ -62,41 +390,28 @@
                         else
                         {
                             <div class="w-full h-full bg-[#EFE0C9] flex items-center justify-center">
-                                <!-- Star icon — Heroicons outline (รางวัล) -->
-                                <svg class="w-10 h-10 text-[#C8A97E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <svg class="w-8 h-8 text-[#C8A97E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                     <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                          d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
                                 </svg>
                             </div>
                         }
                     </div>
-
-                    <!-- ข้อมูลรางวัล -->
                     <div class="p-3">
-                        <div class="font-bold text-[0.875rem] text-[#3E2723] leading-snug mb-1.5">
-                            @reward.RewardName
-                        </div>
-
-                        <!-- แต้มที่ต้องใช้ -->
-                        <div class="flex items-center gap-1 mb-2">
-                            <!-- Star icon — Heroicons solid -->
-                            <svg class="w-3.5 h-3.5 text-[#C8A97E]" fill="currentColor" viewBox="0 0 24 24">
+                        <div class="font-bold text-[0.82rem] text-[#3E2723] leading-snug mb-2">@reward.RewardName</div>
+                        <div class="flex items-center gap-1 mb-2.5">
+                            <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
                             </svg>
-                            <span class="font-['Inter'] text-base font-bold text-[#6F4E37] tracking-tight">
-                                @reward.PointsRequired
-                            </span>
-                            <span class="text-[0.7rem] text-[#8D6748]">แต้ม</span>
+                            <span class="font-bold text-[#6F4E37] text-[0.95rem]"
+                                  style="font-family:'Inter',sans-serif;">@reward.PointsRequired</span>
+                            <span class="text-[0.68rem] text-[#8D6748]">แต้ม</span>
                         </div>
-
-                        <!-- สต็อก -->
                         @if (reward.StockQuantity.HasValue)
                         {
-                            <div class="text-[0.7rem] text-gray-400">คงเหลือ @reward.StockQuantity ชิ้น</div>
+                            <div class="text-[0.68rem] text-gray-400 mb-2">คงเหลือ @reward.StockQuantity ชิ้น</div>
                         }
-
-                        <!-- ปุ่มแจ้งพนักงาน -->
-                        <div class="mt-2 bg-[#EFE0C9] text-[#6F4E37] text-center py-1.5 rounded-lg text-[0.75rem] font-bold">
+                        <div class="text-center py-1.5 rounded-lg text-[0.72rem] font-bold text-[#6F4E37] bg-[#EFE0C9]">
                             แจ้งพนักงาน
                         </div>
                     </div>
@@ -104,4 +419,5 @@
             }
         </div>
     }
+
 </div>

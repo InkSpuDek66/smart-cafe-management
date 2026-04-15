@@ -1,12 +1,11 @@
 @* Views/Account/Login.cshtml *@
 @* ------------------------------------------------
 - หน้าเข้าสู่ระบบพนักงาน
-- ฟอร์มกรอกข้อมูล: Username, Password
+- ฟอร์มกรอกข้อมูล: ID หรือ Username, Password
 - แสดงข้อความผิดพลาดหากเข้าสู่ระบบไม่สำเร็จ
-- ใช้ Layout เดียวกับหน้าอื่นๆ ใน Account (เช่น Register) เพื่อความสอดคล้อง
 - URL เข้าถึง: /Account/Login
-- Method: POST (บันทึกข้อมูล)
-- ViewModel: LoginViewModel (มี properties: Username, Password)
+- Method: POST
+- ViewModel: LoginViewModel (Identifier, Password, RememberMe)
 - Controller Action: AccountController.Login (POST)
 ------------------------------------------------ *@
 
@@ -36,6 +35,12 @@
             @if (ViewBag.ErrorMessage != null)
             {
                 <div class="alert alert-error mb-4">
+                    <!-- Heroicon: exclamation-circle -->
+                    <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
                     <span>@ViewBag.ErrorMessage</span>
                 </div>
             }
@@ -43,21 +48,25 @@
             <form method="post" asp-action="Login" asp-controller="Account">
 
                 <div class="form-control mb-4">
-                    <label class="label pb-1">
-                        <span class="label-text">ชื่อผู้ใช้</span>
+                    <label class="label pb-1" for="Identifier">
+                        <span class="label-text font-medium">ID พนักงาน หรือ Username</span>
                     </label>
+                    <!-- รับได้ทั้ง StaffId (ตัวเลข 6 หลัก) และ Username ตัวอักษร -->
                     <input type="text"
-                           asp-for="Username"
+                           id="Identifier"
+                           asp-for="Identifier"
                            class="input input-bordered w-full"
-                           placeholder="กรอกชื่อผู้ใช้"
+                           placeholder="เช่น 690001 หรือ john.doe"
                            autocomplete="username"
-                           oninput="this.value=this.value.toLowerCase()"
                            required />
+                    <label class="label pt-1">
+                        <span class="label-text-alt text-gray-400">กรอก ID พนักงาน (6 หลัก) หรือ Username</span>
+                    </label>
                 </div>
 
                 <div class="form-control mb-4">
                     <label class="label pb-1">
-                        <span class="label-text">รหัสผ่าน</span>
+                        <span class="label-text font-medium">รหัสผ่าน</span>
                     </label>
                     <div class="relative">
                         <input type="password"
@@ -80,11 +89,11 @@
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                       d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                             </svg>
-                            <!-- X icon — Heroicons outline (ซ่อนรหัสผ่าน) -->
+                            <!-- EyeSlash icon — Heroicons outline (ซ่อนรหัสผ่าน) -->
                             <svg id="eyeOffIcon" fill="none" viewBox="0 0 24 24"
                                  stroke-width="2" stroke="currentColor" class="w-5 h-5 hidden">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M6 18L18 6M6 6l12 12"/>
+                                      d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
                             </svg>
                         </button>
                     </div>

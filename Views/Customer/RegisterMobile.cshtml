@@ -1,0 +1,112 @@
+@* Views/Customer/RegisterMobile.cshtml *@
+@* ------------------------------------------------
+- หน้าสมัครสมาชิกใหม่ สำหรับลูกค้าขาจร (Mobile Layout)
+- URL: /Customer/RegisterMobile?table=T01
+- Method: GET (แสดงฟอร์ม), POST (บันทึก)
+- Controller Action: CustomerController.RegisterMobile
+------------------------------------------------ *@
+
+@{
+    ViewData["Title"] = "สมัครสมาชิก";
+    Layout = "_MobileLayout";
+    var tableNumber = ViewBag.TableNumber as string;
+    ViewBag.CartCount = 0;
+}
+
+<div class="p-4">
+
+    <!-- ปุ่มกลับ -->
+    <a href="@Url.Action("Checkout", "Customer")"
+       class="inline-flex items-center gap-1 text-[#6F4E37] text-sm font-bold no-underline mb-4">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        กลับ
+    </a>
+
+    <h2 class="text-[1.25rem] font-bold text-[#3E2723] mb-1">สมัครสมาชิกใหม่</h2>
+    <p class="text-[0.8rem] text-[#8D6748] mb-4">สะสมแต้ม 10 บาท = 1 แต้ม และ Stamp Card ฟรีเครื่องดื่ม</p>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="bg-red-50 border border-red-300 rounded-xl px-4 py-3 mb-4 text-[0.82rem] text-red-800">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="bg-green-50 border border-green-300 rounded-xl px-4 py-3 mb-4 text-[0.82rem] text-green-800 font-semibold">
+            @TempData["Success"]
+        </div>
+    }
+
+    <form asp-action="RegisterMobile" asp-controller="Customer" method="post">
+        <input type="hidden" name="table" value="@tableNumber" />
+
+        <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-4">
+            <div class="bg-[#6F4E37] text-white px-4 py-3 font-bold text-sm">ข้อมูลส่วนตัว</div>
+            <div class="p-4 flex flex-col gap-3.5">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                            ชื่อ *
+                        </label>
+                        <input type="text" name="firstName" required placeholder="ชื่อจริง"
+                               class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                            นามสกุล *
+                        </label>
+                        <input type="text" name="lastName" required placeholder="นามสกุล"
+                               class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                        เบอร์โทรศัพท์ * (10 หลัก)
+                    </label>
+                    <input type="tel" name="phone" id="regPhoneInput" required
+                           placeholder="0812345678"
+                           inputmode="numeric"
+                           maxlength="10"
+                           pattern="[0-9]{10}"
+                           class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                    <div class="text-[0.7rem] text-gray-400 mt-0.5">ใช้เป็น Username สำหรับสะสมแต้ม</div>
+                </div>
+
+                <div>
+                    <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">
+                        วันเกิด (ไม่บังคับ)
+                    </label>
+                    <input type="date" name="birthDate"
+                           class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                    <div class="text-[0.7rem] text-gray-400 mt-0.5">รับส่วนลดพิเศษวันเกิด — <strong>กรอกปี ค.ศ.</strong> เช่น 1995 (ปีไทยลบ 543)</div>
+                </div>
+
+            </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-[#6F4E37] text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer">
+            สมัครสมาชิก
+        </button>
+    </form>
+
+</div>
+
+<script>
+    // กรองให้รับเฉพาะตัวเลขในช่องเบอร์โทร
+    var regPhone = document.getElementById('regPhoneInput');
+    if (regPhone) {
+        regPhone.addEventListener('keypress', function (e) {
+            if (!/[0-9]/.test(e.key)) e.preventDefault();
+        });
+        regPhone.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 10);
+        });
+    }
+</script>

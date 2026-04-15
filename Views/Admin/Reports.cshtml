@@ -31,12 +31,12 @@
 <form asp-controller="Admin" asp-action="Reports" method="get"
       class="flex gap-3 items-end mb-5 flex-wrap">
     <div>
-        <label class="block text-xs font-bold text-[#6F4E37] mb-1">จากวันที่</label>
+        <label class="block text-xs font-bold text-[#6F4E37] mb-1">จากวันที่ <span class="font-normal text-gray-400">(ค.ศ.)</span></label>
         <input type="date" name="from" value="@ViewBag.DateFrom"
                class="border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-[#fefaf6] outline-none" />
     </div>
     <div>
-        <label class="block text-xs font-bold text-[#6F4E37] mb-1">ถึงวันที่</label>
+        <label class="block text-xs font-bold text-[#6F4E37] mb-1">ถึงวันที่ <span class="font-normal text-gray-400">(ค.ศ.)</span></label>
         <input type="date" name="to" value="@ViewBag.DateTo"
                class="border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm bg-[#fefaf6] outline-none" />
     </div>

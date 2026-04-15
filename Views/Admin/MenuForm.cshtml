@@ -151,6 +151,28 @@
                     }
                 </div>
 
+                <!-- กลุ่มท็อปปิ้ง -->
+                <div class="mb-4">
+                    <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
+                        กลุ่มท็อปปิ้ง (ToppingGroup)
+                    </label>
+                    <select name="ToppingGroup"
+                            class="select select-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-[0.9rem] outline-none">
+                        <option value="" selected="@(string.IsNullOrEmpty(Model.ToppingGroup))">
+                            ค่าเริ่มต้น — แสดงทุกตัวเลือก (นม + ขนาด)
+                        </option>
+                        <option value="Soda" selected="@(Model.ToppingGroup == "Soda")">
+                            Soda — ไม่มีตัวเลือกนม, มีท็อปปิ้งผลไม้แทน
+                        </option>
+                        <option value="NoMilk" selected="@(Model.ToppingGroup == "NoMilk")">
+                            NoMilk — ไม่มีตัวเลือกนมทุกชนิด (ไม่มีท็อปปิ้งผลไม้)
+                        </option>
+                    </select>
+                    <div class="text-[0.7rem] text-gray-400 mt-[3px]">
+                        กำหนดตัวเลือกที่แสดงหน้าเพิ่มลงตะกร้าฝั่งลูกค้า
+                    </div>
+                </div>
+
                 <!-- Checkboxes -->
                 <div class="flex gap-8 mb-4">
                     <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-[#3E2723]">
@@ -170,34 +192,34 @@
                 </div>
 
                 @{
-                    // ถ้า Seasonal และวันสิ้นสุดผ่านไปแล้ว → แสดงคำเตือน
+                    // ถ้า Seasonal และวันเวลาสิ้นสุดผ่านไปแล้ว → แสดงคำเตือน
                     bool seasonExpired = Model.IsSeasonal
                         && !string.IsNullOrEmpty(Model.SeasonEndDate)
                         && DateTime.TryParse(Model.SeasonEndDate, out var endDt)
-                        && endDt < DateTime.Today;
+                        && endDt < DateTime.Now;
                 }
                 @if (seasonExpired)
                 {
                     <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-[0.8rem] text-red-700">
-                        หมดอายุ seasonal แล้ว (สิ้นสุด @DateTime.Parse(Model.SeasonEndDate!).ToString("dd/MM/yyyy"))
-                        — เมนูนี้ถูกปิดขายอัตโนมัติ ต้องแก้วันสิ้นสุดหรือปิด checkbox เมนูตามฤดูกาล
+                        หมดอายุ seasonal แล้ว (สิ้นสุด @DateTime.Parse(Model.SeasonEndDate!).ToString("dd/MM/yyyy HH:mm"))
+                        — เมนูนี้ถูกปิดขายอัตโนมัติ ต้องแก้วันเวลาสิ้นสุดหรือปิด checkbox เมนูตามฤดูกาล
                     </div>
                 }
 
-                <!-- วันที่ Seasonal -->
+                <!-- วันเวลา Seasonal -->
                 <div id="seasonDateBox" class="@(Model.IsSeasonal ? "grid" : "hidden") grid-cols-2 gap-4 mb-4 bg-[#FDF6EC] p-[0.875rem] rounded-lg border border-dashed border-[#C8A97E]">
                     <div>
                         <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
-                            วันที่เริ่ม
+                            วันเวลาเริ่ม
                         </label>
-                        <input type="date" name="SeasonStartDate" value="@Model.SeasonStartDate"
+                        <input type="datetime-local" name="SeasonStartDate" value="@Model.SeasonStartDate"
                                class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none" />
                     </div>
                     <div>
                         <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-[0.35rem]">
-                            วันที่สิ้นสุด
+                            วันเวลาสิ้นสุด
                         </label>
-                        <input type="date" name="SeasonEndDate" value="@Model.SeasonEndDate"
+                        <input type="datetime-local" name="SeasonEndDate" value="@Model.SeasonEndDate"
                                class="input input-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm outline-none" />
                     </div>
                 </div>

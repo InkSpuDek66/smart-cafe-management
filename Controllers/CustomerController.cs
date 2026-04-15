@@ -18,8 +18,12 @@ public class CustomerController : Controller
     private readonly IWebHostEnvironment _env;
     private readonly IHubContext<CafeHub> _hub;
 
-    // Session Key ที่ใช้เก็บตะกร้าสินค้า
-    private const string CartSessionKey = "CustomerCart";
+    // Session Key ผูกกับ TableNumber เพื่อแยก Session ของแต่ละโต๊ะออกจากกัน
+    // ตัวอย่าง: โต๊ะ T01 ใช้ "CustomerCart_T01" และ "MemberPhone_T01"
+    // แม้ใช้ browser เดียวกัน คนละโต๊ะก็ไม่แชร์ข้อมูลกัน
+    private string TableNum => HttpContext.Session.GetString("TableNumber") ?? "default";
+    private string CartKey => $"CustomerCart_{TableNum}";
+    private string MemberPhoneKey => $"MemberPhone_{TableNum}";
 
     public CustomerController(Csi402dbContext db, IWebHostEnvironment env, IHubContext<CafeHub> hub)
     {
@@ -41,11 +45,11 @@ public class CustomerController : Controller
         var tableNumber = HttpContext.Session.GetString("TableNumber");
 
         // ดึงเมนูที่เปิดใช้งาน กรองตาม Category ถ้ามี
-        // เมนู seasonal ที่หมดอายุแล้ว (SeasonEndDate < Today) ให้ถือว่าปิดขายอัตโนมัติ
-        var todayOnly = DateOnly.FromDateTime(DateTime.Today);
+        // เมนู seasonal ที่หมดอายุแล้ว (SeasonEndDate < Now) ให้ถือว่าปิดขายอัตโนมัติ
+        var now = DateTime.Now;
         var query = _db.Menuitems.Where(m =>
             m.IsAvailable == (ulong)1
-            && !(m.IsSeasonal == (ulong)1 && m.SeasonEndDate.HasValue && m.SeasonEndDate.Value < todayOnly));
+            && !(m.IsSeasonal == (ulong)1 && m.SeasonEndDate.HasValue && m.SeasonEndDate.Value < now));
 
         if (!string.IsNullOrEmpty(category) && category != "All")
             query = query.Where(m => m.Category == category);
@@ -61,7 +65,7 @@ public class CustomerController : Controller
             .ToList();
 
         // นับของในตะกร้าสำหรับแสดงบน Badge
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
 
         // ตรวจสอบว่ามีออเดอร์ที่ยังดำเนินการอยู่สำหรับโต๊ะนี้หรือไม่
         int? activeOrderId = null;
@@ -81,7 +85,7 @@ public class CustomerController : Controller
         }
 
         // ดึงข้อมูล Member จาก Session เพื่อแสดง Points/Stamps บน Header
-        var memberPhone = HttpContext.Session.GetString("MemberPhone");
+        var memberPhone = HttpContext.Session.GetString(MemberPhoneKey);
         if (!string.IsNullOrEmpty(memberPhone))
         {
             var member = _db.Members.FirstOrDefault(m => m.Phone == memberPhone);
@@ -114,7 +118,7 @@ public class CustomerController : Controller
         var item = _db.Menuitems.FirstOrDefault(m => m.MenuItemId == id);
         if (item == null) return NotFound();
 
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
 
         ViewBag.CartCount = cart.Sum(i => i.Quantity);
 
@@ -161,7 +165,7 @@ public class CustomerController : Controller
                           && tableDict.GetValueOrDefault(o.TableId.Value, "") == tableNumber
         }).ToList<dynamic>();
 
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
         ViewBag.CartCount   = cart.Sum(i => i.Quantity);
         ViewBag.TableNumber = tableNumber;
         ViewBag.QueueRows   = queueRows;
@@ -179,7 +183,7 @@ public class CustomerController : Controller
         var item = _db.Menuitems.FirstOrDefault(m => m.MenuItemId == menuItemId);
         if (item == null) return NotFound();
 
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
 
         cart.Add(new CartItem
         {
@@ -194,7 +198,7 @@ public class CustomerController : Controller
             OptionPriceAdjustment   = optionPriceAdjustment
         });
 
-        HttpContext.Session.SetJson(CartSessionKey, cart);
+        HttpContext.Session.SetJson(CartKey, cart);
 
         TempData["Success"] = $"เพิ่ม {item.MenuName} ลงตะกร้าแล้ว";
 
@@ -208,11 +212,11 @@ public class CustomerController : Controller
     [HttpPost]
     public IActionResult RemoveFromCart(int index)
     {
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
         if (index >= 0 && index < cart.Count)
             cart.RemoveAt(index);
 
-        HttpContext.Session.SetJson(CartSessionKey, cart);
+        HttpContext.Session.SetJson(CartKey, cart);
         return RedirectToAction("Cart");
     }
 
@@ -223,7 +227,7 @@ public class CustomerController : Controller
     [HttpPost]
     public IActionResult UpdateCartQty(int index, int quantity)
     {
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
         if (index >= 0 && index < cart.Count)
         {
             if (quantity <= 0)
@@ -232,7 +236,7 @@ public class CustomerController : Controller
                 cart[index].Quantity = quantity;
         }
 
-        HttpContext.Session.SetJson(CartSessionKey, cart);
+        HttpContext.Session.SetJson(CartKey, cart);
         return RedirectToAction("Cart");
     }
 
@@ -242,7 +246,7 @@ public class CustomerController : Controller
     // ============================================================
     public IActionResult Cart()
     {
-        var cart       = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart        = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
         var tableNumber = HttpContext.Session.GetString("TableNumber");
 
         var viewModel = new CartViewModel
@@ -250,6 +254,20 @@ public class CustomerController : Controller
             Items       = cart,
             TableNumber = tableNumber
         };
+
+        // ตรวจสอบสิทธิ์ Stamp Card เพื่อแสดงแบนเนอร์แจ้งเตือน
+        var memberPhone = HttpContext.Session.GetString(MemberPhoneKey);
+        if (!string.IsNullOrEmpty(memberPhone))
+        {
+            var member = _db.Members.FirstOrDefault(m => m.Phone == memberPhone);
+            if (member != null)
+            {
+                int stamps          = member.StampBalance ?? 0;
+                ViewBag.MemberStamps = stamps;
+                ViewBag.HasStampRight = stamps >= 10;
+                ViewBag.StampRightCount = stamps / 10;  // จำนวนสิทธิ์ที่ใช้ได้
+            }
+        }
 
         return View(viewModel);
     }
@@ -260,7 +278,7 @@ public class CustomerController : Controller
     // ============================================================
     public IActionResult Checkout()
     {
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
         if (!cart.Any()) return RedirectToAction("Menu");
 
         decimal totalAmount = cart.Sum(i => i.ItemTotal);
@@ -288,6 +306,35 @@ public class CustomerController : Controller
         ViewBag.TotalAmount      = totalAmount;
         ViewBag.PendingFreeItems = pendingFreeItems;
 
+        // pre-fill เบอร์โทรจาก Session และตรวจสิทธิ์ Stamp Card (ไม่เปิดเผยข้อมูลอื่น)
+        var sessionPhone       = HttpContext.Session.GetString(MemberPhoneKey);
+        var stampFreeMenuItems = new List<Menuitem>();
+        int memberStampBalance = 0;
+
+        if (!string.IsNullOrEmpty(sessionPhone))
+        {
+            var sessionMember = _db.Members.FirstOrDefault(m => m.Phone == sessionPhone);
+            if (sessionMember != null)
+            {
+                memberStampBalance = sessionMember.StampBalance ?? 0;
+
+                if (memberStampBalance >= 10)
+                {
+                    stampFreeMenuItems = _db.Menuitems
+                        .Where(m => m.IsAvailable == (ulong)1)
+                        .OrderBy(m => m.Category)
+                        .ThenBy(m => m.MenuName)
+                        .ToList();
+                }
+            }
+        }
+
+        // ส่งเฉพาะเบอร์โทร (pre-fill) + สิทธิ์ Stamp — ไม่ส่งชื่อหรือแต้ม
+        ViewBag.SessionPhone       = sessionPhone;
+        ViewBag.HasStampRight      = memberStampBalance >= 10;
+        ViewBag.StampRightCount    = memberStampBalance / 10;
+        ViewBag.StampFreeMenuItems = stampFreeMenuItems;
+
         return View();
     }
 
@@ -296,9 +343,9 @@ public class CustomerController : Controller
     // สร้างออเดอร์ใน Database + Reserve Ingredient Stock
     // ============================================================
     [HttpPost]
-    public IActionResult PlaceOrder(string? guestName, string? memberPhone)
+    public IActionResult PlaceOrder(string? guestName, string? memberPhone, int? stampFreeMenuItemId)
     {
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
         if (!cart.Any()) return RedirectToAction("Menu");
 
         var tableNumber = HttpContext.Session.GetString("TableNumber");
@@ -316,14 +363,16 @@ public class CustomerController : Controller
             }
         }
 
-        // ค้นหาสมาชิกถ้าลูกค้ากรอกเบอร์โทร
+        // ค้นหาสมาชิก — ใช้เบอร์จากฟอร์มก่อน ถ้าไม่มีให้ fallback ไป Session
+        if (string.IsNullOrEmpty(memberPhone))
+            memberPhone = HttpContext.Session.GetString(MemberPhoneKey);
+
         Member? member = null;
         if (!string.IsNullOrEmpty(memberPhone))
         {
             member = _db.Members.FirstOrDefault(m => m.Phone == memberPhone);
-            // บันทึกเบอร์โทรสมาชิกลง Session เพื่อแสดงข้อมูลบนหน้า Menu
             if (member != null)
-                HttpContext.Session.SetString("MemberPhone", member.Phone ?? "");
+                HttpContext.Session.SetString(MemberPhoneKey, member.Phone ?? "");
         }
 
         // คำนวณยอดรวม
@@ -387,7 +436,7 @@ public class CustomerController : Controller
             TotalAmount     = totalAmount,
             DiscountAmount  = discountAmount,
             NetAmount       = netAmount,
-            ReservedUntil   = DateTime.Now.AddMinutes(5),           // จอง 5 นาที
+            ReservedUntil   = DateTime.Now.AddMinutes(15),          // จอง 15 นาที
             CreatedAt       = DateTime.Now
         };
 
@@ -457,12 +506,11 @@ public class CustomerController : Controller
                 OrderItemId       = nextItemId++,
                 OrderId           = newOrderId,
                 MenuItemId        = freeId,
-                OrderItemStatusId = 1,          // Pending
+                OrderItemStatusId = 1,
                 Quantity          = 1,
-                UnitPrice         = 0           // รายการฟรี — ราคา 0
+                UnitPrice         = 0
             });
 
-            // บันทึก Option พิเศษเพื่อระบุว่าเป็นรายการโปรโมชั่น
             _db.Orderitemoptions.Add(new Orderitemoption
             {
                 OrderItemOptionId = nextOptId++,
@@ -471,6 +519,57 @@ public class CustomerController : Controller
                 OptionValue       = "ฟรี",
                 PriceAdjustment   = 0
             });
+        }
+
+        // เพิ่มรายการเมนูฟรีจาก Stamp Card (ถ้าสมาชิกเลือกใช้สิทธิ์)
+        if (member != null && stampFreeMenuItemId.HasValue && stampFreeMenuItemId.Value > 0)
+        {
+            // ตรวจสอบว่ายังมีสิทธิ์คงเหลือจริง (ป้องกัน race condition)
+            var freshMember = _db.Members.Find(member.MemberId);
+            if (freshMember != null && (freshMember.StampBalance ?? 0) >= 10)
+            {
+                var stampFreeMenu = _db.Menuitems
+                    .FirstOrDefault(m => m.MenuItemId == stampFreeMenuItemId.Value && m.IsAvailable == (ulong)1);
+
+                if (stampFreeMenu != null)
+                {
+                    int stampItemId = nextItemId++;
+                    _db.Orderitems.Add(new Orderitem
+                    {
+                        OrderItemId       = stampItemId,
+                        OrderId           = newOrderId,
+                        MenuItemId        = stampFreeMenu.MenuItemId,
+                        OrderItemStatusId = 1,
+                        Quantity          = 1,
+                        UnitPrice         = 0,
+                        IsStampReward     = 1   // ระบุว่าเป็นรายการฟรีจาก Stamp Card
+                    });
+
+                    _db.Orderitemoptions.Add(new Orderitemoption
+                    {
+                        OrderItemOptionId = nextOptId++,
+                        OrderItemId       = stampItemId,
+                        OptionName        = "Stamp Card",
+                        OptionValue       = "ฟรี",
+                        PriceAdjustment   = 0
+                    });
+
+                    // ตัด 10 Stamp และบันทึก Transaction TypeId=4 (StampRedeem)
+                    freshMember.StampBalance = (freshMember.StampBalance ?? 0) - 10;
+                    int nextTransId = (_db.Pointtransactions.Any()
+                        ? _db.Pointtransactions.Max(t => t.TransId) : 0) + 1;
+                    _db.Pointtransactions.Add(new Pointtransaction
+                    {
+                        TransId    = nextTransId,
+                        MemberId   = freshMember.MemberId,
+                        TypeId     = 4,             // StampRedeem
+                        Amount     = 10,
+                        RefOrderId = newOrderId,
+                        CreatedBy  = null,          // ลูกค้าทำเอง
+                        CreatedAt  = DateTime.Now
+                    });
+                }
+            }
         }
 
         // Reserve Ingredient Stock ตาม Recipe
@@ -494,7 +593,7 @@ public class CustomerController : Controller
         _db.SaveChanges();
 
         // ล้างตะกร้า
-        HttpContext.Session.Remove(CartSessionKey);
+        HttpContext.Session.Remove(CartKey);
 
         return RedirectToAction("Payment", new { orderId = newOrderId });
     }
@@ -516,6 +615,13 @@ public class CustomerController : Controller
 
         ViewBag.Order   = order;
         ViewBag.Items   = items;
+
+        // ดึง TableNumber เพื่อใช้ redirect กลับหน้าเมนูเมื่อออเดอร์ถูกยกเลิก
+        if (order.TableId.HasValue)
+        {
+            var table = _db.Tables.Find(order.TableId.Value);
+            ViewBag.TableNumber = table?.TableNumber;
+        }
 
         // ดึง Payment ที่มีอยู่ (ถ้าเคยอัปโหลดแล้ว)
         var existingPayment = _db.Payments.FirstOrDefault(p => p.OrderId == orderId);
@@ -545,7 +651,7 @@ public class CustomerController : Controller
     [HttpPost]
     public IActionResult RedeemPoints(int orderId, int points)
     {
-        var memberPhone = HttpContext.Session.GetString("MemberPhone");
+        var memberPhone = HttpContext.Session.GetString(MemberPhoneKey);
         if (string.IsNullOrEmpty(memberPhone))
             return Json(new { ok = false, message = "กรุณาเข้าสู่ระบบสมาชิกก่อน" });
 
@@ -590,7 +696,7 @@ public class CustomerController : Controller
     [HttpPost]
     public IActionResult RedeemStamp(int orderId)
     {
-        var memberPhone = HttpContext.Session.GetString("MemberPhone");
+        var memberPhone = HttpContext.Session.GetString(MemberPhoneKey);
         if (string.IsNullOrEmpty(memberPhone))
             return Json(new { ok = false, message = "กรุณาเข้าสู่ระบบสมาชิกก่อน" });
 
@@ -639,6 +745,13 @@ public class CustomerController : Controller
     {
         var order = _db.Orders.FirstOrDefault(o => o.OrderId == orderId);
         if (order == null) return NotFound();
+
+        // ออเดอร์ที่ถูกยกเลิกแล้ว ไม่รับสลิป
+        if (order.OrderStatusId == 6)
+        {
+            TempData["Error"] = "ออเดอร์นี้ถูกยกเลิกอัตโนมัติแล้ว เนื่องจากหมดเวลาชำระ กรุณาสั่งใหม่";
+            return RedirectToAction("Payment", new { orderId });
+        }
 
         if (slip == null || slip.Length == 0)
         {
@@ -692,27 +805,11 @@ public class CustomerController : Controller
     }
 
     // ============================================================
-    // GET /Customer/MemberLookup?phone=0891234567
-    // AJAX — คืนข้อมูลสมาชิกเป็น JSON สำหรับหน้า Checkout
-    // ============================================================
+    // GET /Customer/MemberLookup — ปิดใช้งานแล้ว
+    // ข้อมูลสมาชิกจะตรวจสอบที่ PlaceOrder เท่านั้น เพื่อป้องกัน info leak ก่อน Submit
     [HttpGet]
     public IActionResult MemberLookup(string phone)
-    {
-        if (string.IsNullOrWhiteSpace(phone))
-            return Json(new { found = false });
-
-        var member = _db.Members.FirstOrDefault(m => m.Phone == phone);
-        if (member == null)
-            return Json(new { found = false });
-
-        return Json(new
-        {
-            found     = true,
-            fullName  = $"{member.FirstName} {member.LastName}",
-            points    = member.Points ?? 0,
-            stamps    = member.StampBalance ?? 0
-        });
-    }
+        => Json(new { found = false, message = "endpoint disabled" });
 
     // ============================================================
     // POST /Customer/CancelOrder/5
@@ -774,8 +871,28 @@ public class CustomerController : Controller
             .OrderBy(r => r.PointsRequired)
             .ToList();
 
-        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartSessionKey) ?? new();
+        var cart = HttpContext.Session.GetJson<List<CartItem>>(CartKey) ?? new();
         ViewBag.CartCount = cart.Sum(i => i.Quantity);
+
+        // ดึงข้อมูลสมาชิกเพื่อแสดง Stamp Card
+        var memberPhone = HttpContext.Session.GetString(MemberPhoneKey);
+        if (!string.IsNullOrEmpty(memberPhone))
+        {
+            var member = _db.Members.FirstOrDefault(m => m.Phone == memberPhone);
+            if (member != null)
+            {
+                ViewBag.MemberName   = $"{member.FirstName} {member.LastName}".Trim();
+                ViewBag.MemberStamps = member.StampBalance ?? 0;
+                ViewBag.MemberPoints = member.Points ?? 0;
+
+                // ดึงประวัติ Stamp ล่าสุด 10 รายการ
+                ViewBag.StampHistory = _db.Pointtransactions
+                    .Where(t => t.MemberId == member.MemberId && (t.TypeId == 3 || t.TypeId == 4))
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Take(10)
+                    .ToList();
+            }
+        }
 
         return View(rewards);
     }
@@ -788,7 +905,7 @@ public class CustomerController : Controller
     // ============================================================
     public IActionResult MyOrders()
     {
-        var memberPhone = HttpContext.Session.GetString("MemberPhone");
+        var memberPhone = HttpContext.Session.GetString(MemberPhoneKey);
         var tableNumber = HttpContext.Session.GetString("TableNumber");
 
         var activeOrders = new List<Order>();
@@ -933,20 +1050,269 @@ public class CustomerController : Controller
         ViewBag.StatusLabels    = statusLabels;
         ViewBag.StatusLabel     = statusLabels.GetValueOrDefault(order.OrderStatusId ?? 0, "ไม่ทราบสถานะ");
         // บอก View ว่าลูกค้าคนนี้ Login เป็น Member อยู่หรือเปล่า
-        ViewBag.IsMember        = !string.IsNullOrEmpty(HttpContext.Session.GetString("MemberPhone"));
+        ViewBag.IsMember        = !string.IsNullOrEmpty(HttpContext.Session.GetString(MemberPhoneKey));
 
         return View();
     }
 
     // ============================================================
-    // POST /Customer/MemberLogout
-    // ล้างข้อมูล Member ออกจาก Session — คง TableNumber ไว้เพื่อให้สั่งใหม่ได้
+    // GET|POST /Customer/MemberLogout
+    // ล้างข้อมูล Member ของโต๊ะนี้ออกจาก Session — คง TableNumber ไว้เพื่อให้สั่งใหม่ได้
+    // ตรวจว่ามี Active Order อยู่ก่อน Logout หรือไม่ เพื่อส่ง warning กลับ
+    // ============================================================
+    [HttpGet, HttpPost]
+    public IActionResult MemberLogout(bool force = false)
+    {
+        // ถ้ายังไม่ยืนยัน force และมี active order → ส่ง JSON warning กลับ (AJAX จัดการ)
+        if (!force)
+        {
+            var phone = HttpContext.Session.GetString(MemberPhoneKey);
+            if (!string.IsNullOrEmpty(phone))
+            {
+                var member = _db.Members.FirstOrDefault(m => m.Phone == phone);
+                if (member != null)
+                {
+                    var tableNumber = HttpContext.Session.GetString("TableNumber");
+                    Table? table = null;
+                    if (!string.IsNullOrEmpty(tableNumber))
+                        table = _db.Tables.FirstOrDefault(t => t.TableNumber == tableNumber);
+
+                    // ตรวจหา order ที่ยังไม่เสร็จของสมาชิกนี้ในโต๊ะนี้
+                    var activeOrder = _db.Orders.FirstOrDefault(o =>
+                        o.MemberId == member.MemberId
+                        && (table == null || o.TableId == table.TableId)
+                        && o.OrderStatusId >= 1
+                        && o.OrderStatusId <= 3);  // 1=รอสลิป, 2=Paid, 3=กำลังทำ
+
+                    if (activeOrder != null)
+                    {
+                        // Request แบบ AJAX → ส่ง JSON เพื่อให้ JS แสดง modal
+                        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                            return Json(new { hasActiveOrder = true, orderId = activeOrder.OrderId });
+
+                        // Request แบบปกติ (GET link) → redirect กลับพร้อม warning
+                        TempData["LogoutWarning"] = activeOrder.OrderId;
+                        return RedirectToAction("Tracking", new { orderId = activeOrder.OrderId });
+                    }
+                }
+            }
+        }
+
+        HttpContext.Session.Remove(MemberPhoneKey);
+        HttpContext.Session.Remove(CartKey);
+        return RedirectToAction("Menu");
+    }
+
+    // ============================================================
+    // GET  /Customer/RegisterMobile?table=T01
+    // POST /Customer/RegisterMobile
+    // ให้ลูกค้าขาจรสมัครสมาชิกได้ด้วยตนเองผ่านหน้า Mobile
+    // หลังสมัครสำเร็จ → บันทึกเบอร์ใน Session แล้ว Redirect กลับ Checkout
+    // ============================================================
+    [HttpGet]
+    public IActionResult RegisterMobile(string? table)
+    {
+        ViewBag.TableNumber = table ?? HttpContext.Session.GetString("TableNumber");
+        return View();
+    }
+
+    [HttpPost]
+    public IActionResult RegisterMobile(string firstName, string lastName, string phone, string? birthDate, string? table)
+    {
+        var tableNumber = table ?? HttpContext.Session.GetString("TableNumber");
+
+        // ตรวจสอบเบอร์โทรซ้ำ
+        if (_db.Members.Any(m => m.Phone == phone))
+        {
+            ViewBag.ErrorMessage = "เบอร์โทรนี้มีในระบบแล้ว กรุณากรอกเบอร์ที่ถูกต้อง หรือดำเนินการสั่งสินค้าด้วยเบอร์นี้ได้เลย";
+            ViewBag.TableNumber  = tableNumber;
+            return View();
+        }
+
+        // Generate MemberId แบบ BBNNNN
+        // ใช้ nullable Max() แทน DefaultIfEmpty(seed) เพราะ EF Core แปล DefaultIfEmpty(value) เป็น SQL ไม่ได้
+        var year        = DateTime.Now.Year + 543;
+        var bb          = year % 100;
+        var bbMin       = bb * 10000;
+        var bbMax       = bb * 10000 + 9999;
+        var maxId       = _db.Members
+                             .Where(m => m.MemberId >= bbMin && m.MemberId <= bbMax)
+                             .Select(m => (int?)m.MemberId)
+                             .Max() ?? bbMin;   // ถ้าไม่มีสมาชิกปีนี้เลย ให้เริ่มจาก bbMin
+        var nextRunning = (maxId % 10000) + 1;
+        var memberId    = bb * 10000 + nextRunning;
+
+        var member = new Member
+        {
+            MemberId     = memberId,
+            FirstName    = firstName.Trim(),
+            LastName     = lastName.Trim(),
+            Phone        = phone.Trim(),
+            BirthDate    = DateOnly.TryParse(birthDate, out var bd) ? bd : null,
+            Points       = 0,
+            StampBalance = 0
+        };
+        _db.Members.Add(member);
+        _db.SaveChanges();
+
+        // บันทึกเบอร์ใน Session เพื่อให้ Checkout ดึงแต้มได้ทันที
+        HttpContext.Session.SetString(MemberPhoneKey, phone.Trim());
+
+        TempData["Success"] = $"สมัครสมาชิกสำเร็จ รหัสสมาชิก {memberId}";
+        return RedirectToAction("Checkout", new { table = tableNumber });
+    }
+
+    // ============================================================
+    // GET /Customer/EditProfile
+    // หน้าแก้ไขข้อมูลสมาชิก — ต้อง Login อยู่ใน Session ก่อน
+    // ============================================================
+    [HttpGet]
+    public IActionResult EditProfile()
+    {
+        var phone = HttpContext.Session.GetString(MemberPhoneKey);
+        if (string.IsNullOrEmpty(phone))
+        {
+            TempData["Error"] = "กรุณาระบุเบอร์โทรสมาชิกก่อน";
+            return RedirectToAction("Menu");
+        }
+
+        var member = _db.Members.FirstOrDefault(m => m.Phone == phone);
+        if (member == null)
+        {
+            TempData["Error"] = "ไม่พบข้อมูลสมาชิก";
+            return RedirectToAction("Menu");
+        }
+
+        ViewBag.Member = member;
+        ViewBag.CartCount = 0;
+        return View();
+    }
+
+    // ============================================================
+    // POST /Customer/EditProfile
+    // บันทึกข้อมูลส่วนตัวที่แก้ไข (ไม่รวมเบอร์โทร — แยก flow ต่างหาก)
     // ============================================================
     [HttpPost]
-    public IActionResult MemberLogout()
+    public IActionResult EditProfile(string firstName, string lastName, string? birthDate)
     {
-        HttpContext.Session.Remove("MemberPhone");
-        HttpContext.Session.Remove(CartSessionKey);
-        return RedirectToAction("Menu");
+        var phone = HttpContext.Session.GetString(MemberPhoneKey);
+        if (string.IsNullOrEmpty(phone))
+            return RedirectToAction("Menu");
+
+        var member = _db.Members.FirstOrDefault(m => m.Phone == phone);
+        if (member == null)
+            return RedirectToAction("Menu");
+
+        member.FirstName = firstName.Trim();
+        member.LastName  = lastName.Trim();
+        member.BirthDate = DateOnly.TryParse(birthDate, out var bd) ? bd : member.BirthDate;
+        _db.SaveChanges();
+
+        TempData["Success"] = "บันทึกข้อมูลเรียบร้อยแล้ว";
+        return RedirectToAction("EditProfile");
+    }
+
+    // ============================================================
+    // GET /Customer/ChangePhone
+    // แสดงฟอร์มยืนยันตัวตนก่อนเปลี่ยนเบอร์โทร
+    // Demo: ยืนยันด้วย ชื่อ + นามสกุล + วันเกิด แทน OTP
+    // ============================================================
+    [HttpGet]
+    public IActionResult ChangePhone()
+    {
+        var phone = HttpContext.Session.GetString(MemberPhoneKey);
+        if (string.IsNullOrEmpty(phone))
+            return RedirectToAction("Menu");
+
+        ViewBag.CartCount = 0;
+        return View();
+    }
+
+    // ============================================================
+    // POST /Customer/ChangePhone
+    // Step 1: ยืนยันตัวตน → Step 2: บันทึกเบอร์ใหม่
+    // ============================================================
+    [HttpPost]
+    public IActionResult ChangePhone(string? verifyFirstName, string? verifyLastName, string? verifyBirthDate,
+                                     string? newPhone, string? confirmPhone)
+    {
+        var currentPhone = HttpContext.Session.GetString(MemberPhoneKey);
+        if (string.IsNullOrEmpty(currentPhone))
+            return RedirectToAction("Menu");
+
+        var member = _db.Members.FirstOrDefault(m => m.Phone == currentPhone);
+        if (member == null)
+            return RedirectToAction("Menu");
+
+        // ถ้ายังไม่ได้ผ่าน Step 1 — ตรวจสอบตัวตน
+        if (string.IsNullOrEmpty(newPhone))
+        {
+            bool nameMatch  = string.Equals(member.FirstName?.Trim(), verifyFirstName?.Trim(), StringComparison.OrdinalIgnoreCase)
+                           && string.Equals(member.LastName?.Trim(), verifyLastName?.Trim(),  StringComparison.OrdinalIgnoreCase);
+            bool birthMatch = member.BirthDate.HasValue
+                           && DateOnly.TryParse(verifyBirthDate, out var vbd)
+                           && member.BirthDate.Value == vbd;
+
+            if (!nameMatch || !birthMatch)
+            {
+                ViewBag.Error = "ข้อมูลไม่ตรงกับบัญชีสมาชิก กรุณาตรวจสอบอีกครั้ง";
+                ViewBag.CartCount = 0;
+                return View();
+            }
+
+            // ผ่านการยืนยันแล้ว — เก็บ token ชั่วคราวใน Session เพื่อให้ Step 2 ทำงานได้
+            HttpContext.Session.SetString("PhoneChangeToken", "verified");
+            ViewBag.VerifiedForChange = true;
+            ViewBag.CartCount = 0;
+            return View();
+        }
+
+        // Step 2 — บันทึกเบอร์ใหม่
+        if (HttpContext.Session.GetString("PhoneChangeToken") != "verified")
+        {
+            TempData["Error"] = "กรุณายืนยันตัวตนก่อน";
+            return RedirectToAction("ChangePhone");
+        }
+
+        newPhone = newPhone.Trim();
+
+        // ตรวจสอบรูปแบบ 10 หลัก
+        if (newPhone.Length != 10 || !newPhone.All(char.IsDigit))
+        {
+            ViewBag.Error = "เบอร์โทรต้องเป็นตัวเลข 10 หลัก";
+            ViewBag.VerifiedForChange = true;
+            ViewBag.CartCount = 0;
+            return View();
+        }
+
+        // ยืนยันเบอร์ซ้ำ
+        if (newPhone != confirmPhone?.Trim())
+        {
+            ViewBag.Error = "เบอร์โทรทั้งสองช่องไม่ตรงกัน";
+            ViewBag.VerifiedForChange = true;
+            ViewBag.CartCount = 0;
+            return View();
+        }
+
+        // ตรวจสอบว่าเบอร์ใหม่ไม่ซ้ำกับสมาชิกคนอื่น
+        if (_db.Members.Any(m => m.Phone == newPhone && m.MemberId != member.MemberId))
+        {
+            ViewBag.Error = "เบอร์โทรนี้มีผู้ใช้งานแล้ว กรุณาใช้เบอร์อื่น";
+            ViewBag.VerifiedForChange = true;
+            ViewBag.CartCount = 0;
+            return View();
+        }
+
+        // บันทึกเบอร์ใหม่
+        member.Phone = newPhone;
+        _db.SaveChanges();
+
+        // อัปเดต Session ให้ใช้เบอร์ใหม่
+        HttpContext.Session.Remove(MemberPhoneKey);
+        HttpContext.Session.Remove("PhoneChangeToken");
+        HttpContext.Session.SetString($"MemberPhone_{TableNum}", newPhone);
+
+        TempData["Success"] = "เปลี่ยนเบอร์โทรเรียบร้อยแล้ว";
+        return RedirectToAction("EditProfile");
     }
 }

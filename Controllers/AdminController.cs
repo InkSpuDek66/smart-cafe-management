@@ -135,27 +135,45 @@ public class AdminController : Controller
 
         ViewBag.HourlySalesToday = hourlySalesToday;
 
-        // ออเดอร์ล่าสุด 10 รายการ
-        var recentOrders = (from o in _db.Orders
-                            join t in _db.Tables on o.TableId equals t.TableId into tj
-                            from t in tj.DefaultIfEmpty()
-                            join s in _db.Orderstatuses on o.OrderStatusId equals s.OrderStatusId into sj
-                            from s in sj.DefaultIfEmpty()
-                            orderby o.CreatedAt descending
-                            select new AdminOrderRowViewModel
-                            {
-                                OrderId         = o.OrderId,
-                                TableNumber     = t != null ? t.TableNumber : "—",
-                                CustomerName    = o.GuestName,
-                                QueueNumber     = o.QueueNumber,
-                                NetAmount       = o.NetAmount ?? 0,
-                                OrderStatusId   = o.OrderStatusId ?? 0,
-                                StatusName      = s != null ? s.StatusName : "—",
-                                CreatedAt       = o.CreatedAt,
-                                ItemCount       = _db.Orderitems.Count(i => i.OrderId == o.OrderId)
-                            })
-                           .Take(10)
-                           .ToList();
+        // ออเดอร์ล่าสุด 10 รายการ — ดึง ItemCount แยกเพื่อหลีกเลี่ยง N+1 query
+        var recentOrdersBase = (from o in _db.Orders
+                                join t in _db.Tables on o.TableId equals t.TableId into tj
+                                from t in tj.DefaultIfEmpty()
+                                join s in _db.Orderstatuses on o.OrderStatusId equals s.OrderStatusId into sj
+                                from s in sj.DefaultIfEmpty()
+                                orderby o.CreatedAt descending
+                                select new
+                                {
+                                    o.OrderId,
+                                    TableNumber   = t != null ? t.TableNumber : "—",
+                                    CustomerName  = o.GuestName,
+                                    o.QueueNumber,
+                                    o.NetAmount,
+                                    o.OrderStatusId,
+                                    StatusName    = s != null ? s.StatusName : "—",
+                                    o.CreatedAt
+                                })
+                               .Take(10)
+                               .ToList();
+
+        var recentOrderIds = recentOrdersBase.Select(o => o.OrderId).ToList();
+        var itemCountMap   = _db.Orderitems
+            .Where(i => recentOrderIds.Contains(i.OrderId ?? 0))
+            .GroupBy(i => i.OrderId ?? 0)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var recentOrders = recentOrdersBase.Select(o => new AdminOrderRowViewModel
+        {
+            OrderId       = o.OrderId,
+            TableNumber   = o.TableNumber,
+            CustomerName  = o.CustomerName,
+            QueueNumber   = o.QueueNumber,
+            NetAmount     = o.NetAmount ?? 0,
+            OrderStatusId = o.OrderStatusId ?? 0,
+            StatusName    = o.StatusName,
+            CreatedAt     = o.CreatedAt,
+            ItemCount     = itemCountMap.GetValueOrDefault(o.OrderId, 0)
+        }).ToList();
 
         ViewBag.RecentOrders = recentOrders;
 
@@ -174,12 +192,12 @@ public class AdminController : Controller
         if (!IsLoggedIn()) return RedirectToAction("Login", "Account");
 
         // auto-close เมนู seasonal ที่หมดอายุ — ปิด IsAvailable อัตโนมัติเมื่อเข้าหน้านี้
-        var todayOnly = DateOnly.FromDateTime(DateTime.Today);
+        var now = DateTime.Now;
         var expired = _db.Menuitems
             .Where(m => m.IsSeasonal == (ulong)1
                      && m.IsAvailable == (ulong)1
                      && m.SeasonEndDate.HasValue
-                     && m.SeasonEndDate.Value < todayOnly)
+                     && m.SeasonEndDate.Value < now)
             .ToList();
 
         if (expired.Any())
@@ -263,8 +281,9 @@ public class AdminController : Controller
             IsAvailable     = form.IsAvailable ? (ulong)1 : (ulong)0,
             ImageUrl        = imageUrl,
             IsSeasonal      = form.IsSeasonal ? (ulong)1 : (ulong)0,
-            SeasonStartDate = ParseDate(form.SeasonStartDate),
-            SeasonEndDate   = ParseDate(form.SeasonEndDate)
+            SeasonStartDate = ParseDateTime(form.SeasonStartDate),
+            SeasonEndDate   = ParseDateTime(form.SeasonEndDate),
+            ToppingGroup    = string.IsNullOrEmpty(form.ToppingGroup) ? null : form.ToppingGroup
         });
 
         _db.SaveChanges();
@@ -295,8 +314,9 @@ public class AdminController : Controller
             IsAvailable     = item.IsAvailable == (ulong)1,
             ImageUrl        = item.ImageUrl,
             IsSeasonal      = item.IsSeasonal == (ulong)1,
-            SeasonStartDate = item.SeasonStartDate?.ToString("yyyy-MM-dd"),
-            SeasonEndDate   = item.SeasonEndDate?.ToString("yyyy-MM-dd")
+            SeasonStartDate = item.SeasonStartDate?.ToString("yyyy-MM-ddTHH:mm"),
+            SeasonEndDate   = item.SeasonEndDate?.ToString("yyyy-MM-ddTHH:mm"),
+            ToppingGroup    = item.ToppingGroup
         };
 
         return View("MenuForm", form);
@@ -327,8 +347,9 @@ public class AdminController : Controller
         item.IsAvailable     = form.IsAvailable ? (ulong)1 : (ulong)0;
         item.ImageUrl        = imageUrl;
         item.IsSeasonal      = form.IsSeasonal ? (ulong)1 : (ulong)0;
-        item.SeasonStartDate = ParseDate(form.SeasonStartDate);
-        item.SeasonEndDate   = ParseDate(form.SeasonEndDate);
+        item.SeasonStartDate = ParseDateTime(form.SeasonStartDate);
+        item.SeasonEndDate   = ParseDateTime(form.SeasonEndDate);
+        item.ToppingGroup    = string.IsNullOrEmpty(form.ToppingGroup) ? null : form.ToppingGroup;
 
         _db.SaveChanges();
         TempData["Success"] = $"แก้ไขเมนู '{form.MenuName}' สำเร็จ";
@@ -484,6 +505,18 @@ public class AdminController : Controller
         var order = _db.Orders.FirstOrDefault(o => o.OrderId == payment.OrderId);
         if (order == null) return NotFound();
 
+        // ตรวจสอบสถานะออเดอร์ก่อน Approve
+        if (order.OrderStatusId == 6)
+        {
+            TempData["Error"] = $"ออเดอร์ #{order.OrderId} ถูกยกเลิกอัตโนมัติแล้ว ไม่สามารถอนุมัติสลิปได้";
+            return RedirectToAction("Payments");
+        }
+        if (order.OrderStatusId != 1)
+        {
+            TempData["Error"] = $"สถานะออเดอร์ #{order.OrderId} ไม่ถูกต้อง (อนุมัติได้เฉพาะออเดอร์ที่รอชำระ)";
+            return RedirectToAction("Payments");
+        }
+
         // อัปเดต Payment
         payment.PaymentStatusId = 2;    // Approved
         payment.VerifiedBy      = staffId;
@@ -525,7 +558,10 @@ public class AdminController : Controller
             }
         }
 
-        // คำนวณ Points ถ้าเป็นสมาชิก
+        // บันทึก Payment, Order, InventoryLogs ทั้งหมดก่อน
+        _db.SaveChanges();
+
+        // คำนวณ Points ถ้าเป็นสมาชิก (รันหลัง SaveChanges เพื่อให้ Order ถูก Commit แล้ว)
         if (order.MemberId.HasValue)
         {
             var member  = _db.Members.FirstOrDefault(m => m.MemberId == order.MemberId);
@@ -547,36 +583,25 @@ public class AdminController : Controller
                     CreatedAt   = DateTime.Now
                 });
 
-                // นับ Stamp จากเมนู Coffee/Non-Coffee
-                int coffeeItems = (from oi in orderItems
-                                   join mi in _db.Menuitems on oi.MenuItemId equals mi.MenuItemId
-                                   where mi.Category == "Coffee" || mi.Category == "Non-Coffee"
-                                   select oi.Quantity ?? 0).Sum();
+                // บันทึก PointEarn + member.Points ก่อน เพื่อให้ TransId ถูก Commit ก่อน query Max ครั้งถัดไป
+                _db.SaveChanges();
 
-                if (coffeeItems > 0)
+                // 1 ออเดอร์ = 1 Stamp เสมอ — query Max ใหม่หลัง SaveChanges เพื่อป้องกัน PK ชน
+                member.StampBalance = (member.StampBalance ?? 0) + 1;
+                int nextStampTransId = _db.Pointtransactions.Max(t => t.TransId) + 1;
+                _db.Pointtransactions.Add(new Pointtransaction
                 {
-                    member.StampBalance = (member.StampBalance ?? 0) + coffeeItems;
-
-                    // ใช้ nextTransId + 1 แทนการ query DB ซ้ำ
-                    // เพราะ Points transaction ถูกเพิ่มใน memory แล้วแต่ยังไม่ SaveChanges
-                    // query DB ซ้ำจะได้ค่าเดิมทำให้ TransId ซ้ำ → Primary Key violation
-                    int nextStampId = nextTransId + 1;
-
-                    _db.Pointtransactions.Add(new Pointtransaction
-                    {
-                        TransId     = nextStampId,
-                        MemberId    = member.MemberId,
-                        TypeId      = 3,            // StampEarn
-                        Amount      = coffeeItems,
-                        RefOrderId  = order.OrderId,
-                        CreatedBy   = staffId,
-                        CreatedAt   = DateTime.Now
-                    });
-                }
+                    TransId     = nextStampTransId,
+                    MemberId    = member.MemberId,
+                    TypeId      = 3,            // StampEarn
+                    Amount      = 1,
+                    RefOrderId  = order.OrderId,
+                    CreatedBy   = staffId,
+                    CreatedAt   = DateTime.Now
+                });
+                _db.SaveChanges();
             }
         }
-
-        _db.SaveChanges();
 
         // แจ้ง Customer ว่าชำระสำเร็จ + คิวหมายเลข
         await _hub.Clients.Group($"order-{order.OrderId}").SendAsync("NotifyOrderPaid", new
@@ -709,12 +734,19 @@ public class AdminController : Controller
     }
 
     // ============================================================
-    // Private: แปลง string เป็น DateOnly
+    // Private: แปลง string เป็น DateOnly (ใช้กับ Promotion.StartDate / EndDate)
     // ============================================================
     private static DateOnly? ParseDate(string? dateStr)
     {
         if (string.IsNullOrEmpty(dateStr)) return null;
         return DateOnly.TryParse(dateStr, out var d) ? d : null;
+    }
+
+    // Private: แปลง string เป็น DateTime (ใช้กับ MenuItem.SeasonStartDate / SeasonEndDate — รองรับ datetime-local)
+    private static DateTime? ParseDateTime(string? dateStr)
+    {
+        if (string.IsNullOrEmpty(dateStr)) return null;
+        return DateTime.TryParse(dateStr, out var d) ? d : null;
     }
 
     // ============================================================
@@ -1031,6 +1063,65 @@ public class AdminController : Controller
 
         _db.SaveChanges();
         TempData["Success"] = $"เพิ่มโปรโมชั่น '{promotionName}' สำเร็จ";
+        return RedirectToAction("Promotions");
+    }
+
+    // ============================================================
+    // POST /Admin/EditPromotion
+    // แก้ไขข้อมูลโปรโมชั่นที่มีอยู่
+    // ============================================================
+    [HttpPost]
+    public IActionResult EditPromotion(int promotionId, string promotionName,
+        string? conditionType, string? conditionValue, string? rewardType,
+        string? rewardValue, string? startDate, string? endDate)
+    {
+        if (!IsLoggedIn()) return RedirectToAction("Login", "Account");
+        if (!HasRole(3, 5)) return ForbiddenRedirect();
+
+        if (string.IsNullOrWhiteSpace(promotionName))
+        {
+            TempData["Error"] = "กรุณาระบุชื่อโปรโมชั่น";
+            return RedirectToAction("Promotions");
+        }
+
+        var promo = _db.Promotions.Find(promotionId);
+        if (promo == null)
+        {
+            TempData["Error"] = "ไม่พบโปรโมชั่นที่ต้องการแก้ไข";
+            return RedirectToAction("Promotions");
+        }
+
+        promo.PromotionName  = promotionName.Trim();
+        promo.ConditionType  = string.IsNullOrEmpty(conditionType) ? null : conditionType;
+        promo.ConditionValue = conditionValue;
+        promo.RewardType     = rewardType;
+        promo.RewardValue    = rewardValue;
+        promo.StartDate      = ParseDate(startDate);
+        promo.EndDate        = ParseDate(endDate);
+
+        _db.SaveChanges();
+        TempData["Success"] = $"แก้ไขโปรโมชั่น '{promotionName}' สำเร็จ";
+        return RedirectToAction("Promotions");
+    }
+
+    // ============================================================
+    // POST /Admin/DeletePromotion
+    // ลบโปรโมชั่น (ไม่ลบข้อมูล PointTransactions ที่อ้างอิงอยู่)
+    // ============================================================
+    [HttpPost]
+    public IActionResult DeletePromotion(int promotionId)
+    {
+        if (!IsLoggedIn()) return RedirectToAction("Login", "Account");
+        if (!HasRole(3, 5)) return ForbiddenRedirect();
+
+        var promo = _db.Promotions.Find(promotionId);
+        if (promo != null)
+        {
+            _db.Promotions.Remove(promo);
+            _db.SaveChanges();
+            TempData["Success"] = $"ลบโปรโมชั่น '{promo.PromotionName}' สำเร็จ";
+        }
+
         return RedirectToAction("Promotions");
     }
 

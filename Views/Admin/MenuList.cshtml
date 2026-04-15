@@ -100,7 +100,7 @@
                         <td>
                             @if (item.IsSeasonal == (ulong)1)
                             {
-                                bool expired = item.SeasonEndDate.HasValue && item.SeasonEndDate.Value < DateOnly.FromDateTime(DateTime.Today);
+                                bool expired = item.SeasonEndDate.HasValue && item.SeasonEndDate.Value < DateTime.Now;
                                 @if (expired)
                                 {
                                     <span class="status-badge badge-error" title="หมดอายุแล้ว">หมดอายุ</span>

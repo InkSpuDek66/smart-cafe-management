@@ -10,14 +10,20 @@
 - Controller Action: CustomerController.Checkout (GET/POST)
 ------------------------------------------------ *@
 
+@using Project_CSI402_T2_Y3.Models.Db
 @{
     ViewData["Title"] = "ยืนยันออเดอร์";
     Layout = "_MobileLayout";
-    var cartItems        = ViewBag.CartItems as List<Project_CSI402_T2_Y3.ViewModels.CartItem> ?? new();
-    var totalAmount      = (decimal)(ViewBag.TotalAmount ?? 0);
-    var tableNumber      = ViewBag.TableNumber as string;
-    var pendingFreeItems = ViewBag.PendingFreeItems as List<string> ?? new();
-    ViewBag.CartCount    = cartItems.Sum(i => i.Quantity);
+    var cartItems           = ViewBag.CartItems as List<Project_CSI402_T2_Y3.ViewModels.CartItem> ?? new();
+    var totalAmount         = (decimal)(ViewBag.TotalAmount ?? 0);
+    var tableNumber         = ViewBag.TableNumber as string;
+    var pendingFreeItems    = ViewBag.PendingFreeItems as List<string> ?? new();
+    var stampFreeMenuItems  = ViewBag.StampFreeMenuItems as List<Menuitem> ?? new();
+    bool hasStampRight      = ViewBag.HasStampRight == true;
+    int  stampRightCount    = (int)(ViewBag.StampRightCount ?? 0);
+    // pre-fill เบอร์โทรจาก Session (ไม่แสดงข้อมูลสมาชิกก่อน Submit)
+    string sessionPhone = ViewBag.SessionPhone as string ?? "";
+    ViewBag.CartCount       = cartItems.Sum(i => i.Quantity);
 }
 
 <div class="p-4">
@@ -65,9 +71,18 @@
             </div>
         }
 
+        <!-- แสดงรายการ Stamp Card ฟรีเมื่อเลือกแล้ว (hidden ก่อน) -->
+        <div id="stampFreePreview" class="hidden flex justify-between px-4 py-2.5 border-b border-[#f3f4f6] bg-amber-50">
+            <div>
+                <div id="stampFreePreviewName" class="text-sm font-semibold text-amber-800"></div>
+                <div class="text-[0.72rem] text-amber-600 mt-px">Stamp Card (ฟรี)</div>
+            </div>
+            <div class="font-bold text-amber-700 text-[0.9rem]">0฿</div>
+        </div>
+
         <div class="flex justify-between px-4 py-3.5 font-bold text-base text-[#3E2723]">
             <span>ยอดรวม</span>
-            <span class="font-serif text-[#6F4E37] text-[1.2rem]">@totalAmount.ToString("N0")฿</span>
+            <span class="font-['Inter'] font-bold tracking-tight tabular-nums text-[#6F4E37] text-[1.2rem]">@totalAmount.ToString("N0")฿</span>
         </div>
     </div>
 
@@ -97,19 +112,87 @@
                        class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2.5 text-sm bg-[#fefaf6] outline-none" />
             </div>
 
-            <!-- เบอร์สมาชิก + AJAX Lookup -->
+            <!-- เบอร์สมาชิก — ไม่มี AJAX Lookup, ตรวจสอบตอน Submit เท่านั้น -->
             <div class="mb-3.5">
                 <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1.5">
                     เบอร์โทรสมาชิก (เพื่อรับแต้ม)
                 </label>
-                <input type="tel" id="memberPhoneInput" name="memberPhone" placeholder="เช่น 0891234567"
+                <input type="tel" id="memberPhoneInput" name="memberPhone"
+                       placeholder="เช่น 0891234567"
                        autocomplete="tel"
-                       class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2.5 text-sm bg-[#fefaf6] outline-none" />
-                <div class="text-[0.7rem] text-gray-400 mt-0.5">ใส่เบอร์มือถือที่สมัครสมาชิก เพื่อสะสมแต้ม 10 บาท = 1 แต้ม</div>
+                       inputmode="numeric"
+                       maxlength="10"
+                       pattern="[0-9]{10}"
+                       value="@sessionPhone"
+                       class="w-full border-[1.5px] border-[#d9c9b6] bg-[#fefaf6] rounded-lg px-3.5 py-2.5 text-sm outline-none" />
+                <div class="text-[0.7rem] text-gray-400 mt-0.5">ใส่เบอร์มือถือ 10 หลัก เพื่อสะสมแต้ม 10 บาท = 1 แต้ม (ระบบตรวจสอบเมื่อกดสั่งซื้อ)</div>
 
-                <!-- ผลลัพธ์การค้นหาสมาชิก -->
-                <div id="memberInfo" class="hidden mt-2"></div>
+                @if (string.IsNullOrEmpty(sessionPhone))
+                {
+                    <!-- ยังไม่ได้ระบุเบอร์สมาชิก — แสดงลิงก์สมัคร -->
+                    <div class="mt-2.5">
+                        <a href="@Url.Action("RegisterMobile", "Customer", new { table = tableNumber })"
+                           class="flex items-center justify-between w-full bg-[#FDF6EC] border border-[#d9c9b6] rounded-xl px-4 py-3 no-underline group">
+                            <div>
+                                <div class="text-[0.82rem] font-bold text-[#3E2723]">สมัครสมาชิกรับสิทธิพิเศษ</div>
+                                <div class="text-[0.72rem] text-[#8D6748] mt-0.5">สะสมแต้ม · Stamp Card · โปรโมชั่นวันเกิด</div>
+                            </div>
+                            <svg class="w-5 h-5 text-[#6F4E37] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <!-- เป็นสมาชิกแล้ว — แสดงแทนปุ่มสมัคร -->
+                    <div class="mt-2 flex items-center gap-1.5 text-[0.7rem] text-green-700">
+                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        สมาชิก — แต้มและ Stamp จะถูกบันทึกอัตโนมัติ
+                    </div>
+                }
             </div>
+
+            @* Stamp Section: แสดงเฉพาะเมื่อ Session ยืนยันสิทธิ์แล้ว (ตรวจสอบฝั่ง Server เท่านั้น) *@
+            @if (hasStampRight)
+            {
+                <div class="mb-3.5">
+                    <div class="flex items-center gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3.5 py-2.5 mb-2">
+                        <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                        </svg>
+                        <div>
+                            <span class="font-bold text-amber-800 text-[0.82rem]">คุณมีสิทธิ์เมนูฟรี @stampRightCount รายการ</span>
+                            <span class="text-amber-700 text-[0.75rem]"> จาก Stamp Card</span>
+                        </div>
+                    </div>
+
+                    <label class="block text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1.5">
+                        เลือกเมนูฟรี 1 รายการ
+                    </label>
+                    <div class="relative">
+                        <select id="stampFreeSelect" name="stampFreeMenuItemId"
+                                class="w-full border-[1.5px] border-amber-300 rounded-lg px-3.5 py-2.5 text-sm bg-amber-50 outline-none appearance-none pr-8">
+                            <option value="">— ไม่ใช้สิทธิ์ในออเดอร์นี้ —</option>
+                            @foreach (var mi in stampFreeMenuItems)
+                            {
+                                <option value="@mi.MenuItemId"
+                                        data-name="@mi.MenuName"
+                                        data-price="@mi.Price?.ToString("N0")">
+                                    @mi.MenuName
+                                    @if (mi.Price.HasValue) { <text> (@mi.Price.Value.ToString("N0")฿ → ฟรี)</text> }
+                                </option>
+                            }
+                        </select>
+                        <svg class="w-4 h-4 text-amber-600 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div class="text-[0.7rem] text-amber-700 mt-0.5">1 ออเดอร์ = ใช้สิทธิ์ได้ 1 รายการเท่านั้น</div>
+                </div>
+            }
 
             <!-- ปุ่มยืนยัน -->
             <button type="submit"
@@ -127,43 +210,34 @@
 </div>
 
 <script>
-    // AJAX ค้นหาสมาชิกเมื่อกรอกเบอร์โทรครบ 10 หลัก
     (function () {
-        var phoneInput  = document.getElementById('memberPhoneInput');
-        var infoBox     = document.getElementById('memberInfo');
-        var lookupTimer = null;
+        var phoneInput       = document.getElementById('memberPhoneInput');
+        var stampSelect      = document.getElementById('stampFreeSelect');
+        var stampPreview     = document.getElementById('stampFreePreview');
+        var stampPreviewName = document.getElementById('stampFreePreviewName');
 
-        phoneInput.addEventListener('input', function () {
-            clearTimeout(lookupTimer);
-            var phone = phoneInput.value.trim();
-            if (phone.length < 10) {
-                infoBox.style.display = 'none';
-                return;
-            }
-            // หน่วงเวลา 500ms ก่อนเรียก API
-            lookupTimer = setTimeout(function () {
-                fetch('/Customer/MemberLookup?phone=' + encodeURIComponent(phone))
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (data.found) {
-                            infoBox.innerHTML =
-                                '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:0.6rem 0.875rem;">' +
-                                '  <div style="font-weight:700;color:#166534;font-size:0.875rem;">' + data.fullName + '</div>' +
-                                '  <div style="font-size:0.75rem;color:#15803d;margin-top:2px;">' +
-                                '    แต้มสะสม: <strong>' + data.points + '</strong> แต้ม' +
-                                '    &nbsp;·&nbsp; Stamp: <strong>' + data.stamps + '</strong> / 10' +
-                                '  </div>' +
-                                '</div>';
-                        } else {
-                            infoBox.innerHTML =
-                                '<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;padding:0.5rem 0.875rem;font-size:0.8rem;color:#991b1b;">' +
-                                '  ไม่พบสมาชิกที่ใช้เบอร์นี้' +
-                                '</div>';
-                        }
-                        infoBox.style.display = 'block';
-                    })
-                    .catch(function () { infoBox.style.display = 'none'; });
-            }, 500);
-        });
+        // กรองให้รับเฉพาะตัวเลข 0-9 เท่านั้น — ไม่มี AJAX lookup ระหว่างพิมพ์
+        if (phoneInput) {
+            phoneInput.addEventListener('keypress', function (e) {
+                if (!/[0-9]/.test(e.key)) e.preventDefault();
+            });
+            phoneInput.addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '').slice(0, 10);
+            });
+        }
+
+        // อัปเดต preview สรุปออเดอร์เมื่อเลือกเมนูฟรี (Stamp Card)
+        if (stampSelect) {
+            stampSelect.addEventListener('change', function () {
+                var opt = this.options[this.selectedIndex];
+                if (this.value && opt && stampPreviewName && stampPreview) {
+                    stampPreviewName.textContent = opt.dataset.name + ' × 1';
+                    stampPreview.classList.remove('hidden');
+                } else {
+                    if (stampPreview) stampPreview.classList.add('hidden');
+                    if (stampSelect)  stampSelect.value = '';
+                }
+            });
+        }
     })();
 </script>

@@ -108,8 +108,8 @@ CREATE TABLE MenuItems (
     IsAvailable     BIT,             -- 1=มีขายอยู่  0=ปิดชั่วคราว (Sold Out) ระบบจะแสดง Badge หมด
     ImageUrl        NVARCHAR(255),   -- URL รูปภาพของเมนู ใช้แสดงหน้าเว็บลูกค้า
     IsSeasonal      BIT,             -- 1=เมนูตามฤดูกาล (Seasonal)  0=เมนูปกติ
-    SeasonStartDate DATE,            -- วันที่เริ่มแสดงเมนู Seasonal (NULL ได้ ถ้าเป็นเมนูถาวร)
-    SeasonEndDate   DATE             -- วันที่สิ้นสุดเมนู Seasonal (NULL ได้ ถ้าเป็นเมนูถาวร)
+    SeasonStartDate DATETIME,        -- วันเวลาที่เริ่มแสดงเมนู Seasonal (NULL ได้ ถ้าเป็นเมนูถาวร)
+    SeasonEndDate   DATETIME         -- วันเวลาที่สิ้นสุดเมนู Seasonal (NULL ได้ ถ้าเป็นเมนูถาวร)
 );
 
 -- วัตถุดิบทั้งหมดที่ใช้ในร้าน ระบบจะตัดสต็อกอัตโนมัติตาม Recipes เมื่อออเดอร์ถูก Paid
@@ -185,7 +185,8 @@ CREATE TABLE OrderItems (
     MenuItemId          INT,             -- FK → MenuItems  เมนูที่สั่ง
     OrderItemStatusId   INT,             -- FK → OrderItemStatus  สถานะการชงของรายการนี้
     Quantity            INT,             -- จำนวนที่สั่ง เช่น 2 แก้ว
-    UnitPrice           DECIMAL(10,2)    -- ราคา ณ เวลาที่สั่ง (Price Snapshot) เพื่อป้องกันราคาเปลี่ยนภายหลัง
+    UnitPrice           DECIMAL(10,2),   -- ราคา ณ เวลาที่สั่ง (Price Snapshot) เพื่อป้องกันราคาเปลี่ยนภายหลัง
+    IsStampReward       TINYINT(1)       -- 1 = เมนูฟรีจากการแลก Stamp Card, 0/NULL = รายการปกติ
 );
 
 -- ตัวเลือกเพิ่มเติมของแต่ละรายการ เช่น ระดับความหวาน ประเภทนม เพิ่ม Shot
@@ -297,3 +298,22 @@ INSERT INTO PointTransactionType (PointTransactionTypeId, TypeName) VALUES
     (2, 'Redeem'),
     (3, 'StampEarn'),
     (4, 'StampRedeem');
+
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- Promotions Seed — โปรโมชั่นทั้ง 5 สำหรับ Demo
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- หมายเหตุ: PromotionId 1 (สะสมแต้ม) และ 4 (Stamp Card) มีไว้เพื่อแสดงใน Admin Dashboard
+-- Logic ที่แท้จริงอยู่ใน ApprovePayment (Points) และ StampBalance (Stamp Card)
+-- PromotionId 3 (MinAmount→FreeItem) ต้องการ MenuItemId 18 (Cookie) ใน SQLSeedDemo.sql
+INSERT INTO Promotions (PromotionId, PromotionName, ConditionType, ConditionValue, RewardType, RewardValue, IsActive, StartDate, EndDate) VALUES
+    (1, 'สะสมแต้ม 10 บาท = 1 แต้ม',
+        NULL,           NULL,   'PointEarn',   '1',   1, NULL, NULL),
+    (2, 'เมนู Seasonal ตามเทศกาล',
+        'Seasonal',     NULL,   'SeasonalMenu','',    1, '2025-03-01', '2027-12-31'),
+    (3, 'ยอดครบ 300 บาท รับ Chocolate Chip Cookie ฟรี 1 ชิ้น',
+        'MinAmount',    '300',  'FreeItem',    '18',  1, NULL, NULL),
+    (4, 'Stamp Card — ครบ 10 ดวง รับเครื่องดื่มฟรี 1 แก้ว',
+        'StampCount',   '10',   'FreeDrink',   '1',   1, NULL, NULL),
+    (5, 'Group Check-in ≥5 คน รับส่วนลด 1 แก้ว (ประมาณ 75 บาท)',
+        'GroupCheckin', '5',    'Discount',    '75',  1, NULL, NULL);

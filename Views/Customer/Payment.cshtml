@@ -1,12 +1,10 @@
 @* Views/Customer/Payment.cshtml *@
 @* ------------------------------------------------
-- หน้าชำระเงิน (สำหรับลูกค้า)
-- แสดงข้อมูลออเดอร์และรายการสินค้า
-- ฟอร์มอัปโหลดสลิปการชำระเงิน
+- หน้าชำระเงิน (สำหรับลูกค้า) — 2 ขั้นตอนสำหรับสมาชิก
+- ขั้นที่ 1: แลกแต้ม/Stamp (เฉพาะสมาชิก) → ยืนยันยอดสุทธิ
+- ขั้นที่ 2: แสดง QR + อัปโหลดสลิป
 - URL เข้าถึง: /Customer/Payment/{orderId}
 - Method: GET
-- ViewModel: Order (ส่งมาจาก Controller)
-- Controller Action: CustomerController.Payment (GET)
 ------------------------------------------------ *@
 
 @using Project_CSI402_T2_Y3.Models.Db
@@ -16,28 +14,72 @@
     var order           = ViewBag.Order as Order;
     var items           = ViewBag.Items as dynamic;
     var existingPayment = ViewBag.ExistingPayment as Payment;
+    var tableNumber     = ViewBag.TableNumber as string;
     var memberId        = ViewBag.MemberId as int?;
     var memberName      = ViewBag.MemberName as string;
     var memberPoints    = (int)(ViewBag.MemberPoints ?? 0);
     var memberStamps    = (int)(ViewBag.MemberStamps ?? 0);
     ViewBag.CartCount   = 0;
+
+    // สมาชิกที่มีสิทธิ์แลก → บังคับให้ผ่าน Step 1 ก่อน
+    bool isMemberWithBenefit = memberId.HasValue && (memberPoints > 0 || memberStamps >= 10);
+    // ถ้าอัปโหลดสลิปแล้วให้ข้าม Step 1
+    bool skipStep1 = existingPayment?.PaymentStatusId == 1;
 }
 
 <div class="p-4">
 
     <!-- หัวข้อ -->
-    <h2 class="font-serif text-[1.25rem] font-bold text-[#3E2723] mb-1">
+    <h2 class="text-[1.25rem] font-bold text-[#3E2723] mb-1">
         ชำระเงิน
     </h2>
     <p class="text-[0.8rem] text-[#8D6748] mb-4">ออเดอร์ #@order?.OrderId</p>
 
-    <!-- ยอดที่ต้องชำระ -->
+    @if (order?.OrderStatusId == 6)
+    {
+        <!-- Banner ออเดอร์ถูกยกเลิก — แสดงทันทีถ้าโหลดหน้าขณะออเดอร์ถูกยกเลิกแล้ว -->
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-center">
+            <svg class="w-8 h-8 text-red-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="font-bold text-red-700 mb-1">ออเดอร์ถูกยกเลิกอัตโนมัติ</div>
+            <div class="text-[0.8rem] text-red-600 mb-3">เนื่องจากหมดเวลาชำระเงิน กรุณาสั่งซื้อใหม่</div>
+            @if (!string.IsNullOrEmpty(tableNumber))
+            {
+                <a href="@Url.Action("Menu", "Customer", new { table = tableNumber })"
+                   class="inline-block bg-[#6F4E37] text-white font-bold text-sm px-6 py-2.5 rounded-xl no-underline">
+                    สั่งซื้อใหม่
+                </a>
+            }
+            else
+            {
+                <a href="@Url.Action("Menu", "Customer")"
+                   class="inline-block bg-[#6F4E37] text-white font-bold text-sm px-6 py-2.5 rounded-xl no-underline">
+                    สั่งซื้อใหม่
+                </a>
+            }
+        </div>
+    }
+
+    <!-- ยอดที่ต้องชำระ + Countdown Timer -->
     <div class="text-white rounded-[14px] p-6 mb-4 text-center"
          style="background:linear-gradient(135deg,#6F4E37,#3E2723);">
         <div class="text-[0.8rem] opacity-75 mb-1">ยอดที่ต้องชำระ</div>
-        <div class="font-serif text-[2.5rem] font-bold" id="net-amount-display">
+        <div class="font-['Inter'] font-bold tracking-tight tabular-nums text-[2.5rem]" id="net-amount-display">
             @order?.NetAmount?.ToString("N0")฿
         </div>
+        @if (order?.ReservedUntil.HasValue == true && order.OrderStatusId == 1)
+        {
+            <div class="mt-3 pt-3 border-t border-white/20">
+                <div class="text-[0.72rem] opacity-70 mb-1">กรุณาชำระภายใน</div>
+                <div id="countdown-timer" class="font-['Inter'] font-bold tabular-nums text-[1.4rem] tracking-widest">
+                    --:--
+                </div>
+                <div id="countdown-expired" class="hidden text-[0.8rem] font-bold text-red-300">
+                    หมดเวลา — ออเดอร์ถูกยกเลิกอัตโนมัติ
+                </div>
+            </div>
+        }
     </div>
 
     <!-- รายการสินค้า -->
@@ -51,148 +93,173 @@
             {
                 <div class="flex justify-between px-4 py-2.5 border-b border-[#f3f4f6] text-sm">
                     <span>@row.mi.MenuName × @row.oi.Quantity</span>
-                    <span class="font-semibold text-[#6F4E37]">@((row.oi.UnitPrice * row.oi.Quantity)?.ToString("N0"))฿</span>
+                    <span class="font-semibold text-[#6F4E37] font-['Inter'] tabular-nums">
+                        @((row.oi.UnitPrice * row.oi.Quantity)?.ToString("N0"))฿
+                    </span>
                 </div>
             }
         }
     </div>
 
-    @if (memberId.HasValue)
+    @if (memberId.HasValue && !skipStep1)
     {
-        <!-- กล่องแลกแต้ม/Stamp — แสดงเฉพาะสมาชิกและออเดอร์ที่ยังรอชำระ -->
-        <div class="bg-white rounded-xl border border-[#EFE0C9] mb-4 overflow-hidden">
-            <div class="bg-[#EFE0C9] px-4 py-2.5 flex items-center justify-between">
-                <div>
-                    <div class="text-[0.78rem] font-bold text-[#6F4E37]">สิทธิพิเศษสมาชิก</div>
-                    <div class="text-[0.7rem] text-[#8D6748]">@memberName</div>
-                </div>
-                <div class="flex gap-3 text-right">
+        <!-- ===== STEP 1: แลกสิทธิ์สมาชิกก่อนชำระ ===== -->
+        <div id="step1-section">
+            <div class="bg-white rounded-xl border border-[#EFE0C9] mb-4 overflow-hidden">
+                <div class="bg-amber-500 text-white px-4 py-2.5 flex items-center justify-between">
                     <div>
-                        <div class="text-[0.65rem] text-[#8D6748]">แต้มสะสม</div>
-                        <div class="font-bold text-[#6F4E37] text-sm" id="member-points-display">@memberPoints</div>
+                        <div class="text-[0.78rem] font-bold">สิทธิพิเศษสมาชิก</div>
+                        <div class="text-[0.7rem] opacity-80">@memberName</div>
                     </div>
-                    <div>
-                        <div class="text-[0.65rem] text-[#8D6748]">Stamp</div>
-                        <div class="font-bold text-[#6F4E37] text-sm" id="member-stamps-display">@memberStamps/10</div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-4 flex flex-col gap-2.5">
-
-                @if (memberPoints > 0)
-                {
-                    <!-- แลกแต้ม: 1 แต้ม = ลด 1 บาท -->
-                    <div>
-                        <div class="text-[0.75rem] text-gray-500 mb-1.5">แลกแต้มลดราคา (1 แต้ม = 1 บาท)</div>
-                        <div class="flex items-center gap-2">
-                            <input type="number" id="redeem-points-input"
-                                   min="1" max="@memberPoints" value="1"
-                                   class="w-20 border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm text-center bg-[#fefaf6] outline-none" />
-                            <span class="text-[0.72rem] text-gray-400">แต้ม (มีทั้งหมด @memberPoints)</span>
-                            <button type="button" onclick="customerRedeemPoints()"
-                                    class="ml-auto bg-[#6F4E37] text-white text-[0.8rem] font-bold px-4 py-2 rounded-lg border-none cursor-pointer">
-                                แลกแต้ม
-                            </button>
+                    <div class="flex gap-3 text-right">
+                        <div>
+                            <div class="text-[0.65rem] opacity-80">แต้มสะสม</div>
+                            <div class="font-bold text-sm font-['Inter'] tabular-nums" id="member-points-display">@memberPoints</div>
+                        </div>
+                        <div>
+                            <div class="text-[0.65rem] opacity-80">Stamp</div>
+                            <div class="font-bold text-sm font-['Inter'] tabular-nums" id="member-stamps-display">@memberStamps/10</div>
                         </div>
                     </div>
-                }
+                </div>
+                <div class="p-4 flex flex-col gap-2.5">
 
-                @if (memberStamps >= 10)
-                {
-                    <!-- ใช้ Stamp ฟรีดื่ม -->
-                    <div>
-                        <div class="text-[0.75rem] text-gray-500 mb-1.5">Stamp Card — ครบ 10 ดวงรับฟรี 1 แก้ว</div>
-                        <button type="button" onclick="customerRedeemStamp()"
-                                class="w-full bg-amber-600 text-white text-sm font-bold py-2.5 rounded-lg border-none cursor-pointer">
-                            ใช้ 10 Stamp — รับเครื่องดื่มฟรี 1 แก้ว
-                        </button>
-                    </div>
-                }
+                    @if (memberPoints > 0)
+                    {
+                        <div class="bg-amber-50 rounded-lg p-3">
+                            <div class="text-[0.75rem] font-bold text-amber-800 mb-1.5">แลกแต้มลดราคา (1 แต้ม = 1 บาท)</div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="redeem-points-input"
+                                       min="0" max="@memberPoints" value="0"
+                                       class="w-20 border border-[#d9c9b6] rounded-lg px-3 py-2 text-sm text-center bg-white outline-none" />
+                                <span class="text-[0.72rem] text-gray-400">แต้ม (มี @memberPoints)</span>
+                                <button type="button" onclick="customerRedeemPoints()"
+                                        class="ml-auto bg-amber-600 text-white text-[0.8rem] font-bold px-4 py-2 rounded-lg border-none cursor-pointer">
+                                    แลก
+                                </button>
+                            </div>
+                        </div>
+                    }
 
-                @if (memberPoints == 0 && memberStamps < 10)
-                {
-                    <div class="text-[0.78rem] text-gray-400 text-center py-1">
-                        ยังไม่มีแต้มหรือ Stamp ที่สามารถแลกได้ในขณะนี้
-                    </div>
-                }
+                    @if (memberStamps >= 10)
+                    {
+                        <div class="bg-amber-50 rounded-lg p-3">
+                            <div class="text-[0.75rem] font-bold text-amber-800 mb-1.5">Stamp Card — ครบ 10 ดวงรับฟรี 1 แก้ว</div>
+                            <button type="button" onclick="customerRedeemStamp()"
+                                    class="w-full bg-amber-700 text-white text-sm font-bold py-2.5 rounded-lg border-none cursor-pointer">
+                                ใช้ 10 Stamp — รับเครื่องดื่มฟรี 1 แก้ว
+                            </button>
+                        </div>
+                    }
 
-                <!-- ข้อความยืนยันเมื่อแลกสำเร็จ -->
-                <div id="redeem-success-msg" class="hidden rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-[0.8rem] text-green-700 font-semibold text-center"></div>
-            </div>
-        </div>
-    }
+                    @if (memberPoints == 0 && memberStamps < 10)
+                    {
+                        <div class="text-[0.78rem] text-gray-400 text-center py-1">
+                            ยังไม่มีแต้มหรือ Stamp ที่สามารถแลกได้ในขณะนี้
+                        </div>
+                    }
 
-    @if (existingPayment?.PaymentStatusId == 1)
-    {
-        <!-- อัปโหลดแล้ว รอตรวจสอบ -->
-        <div class="bg-amber-50 border border-yellow-300 rounded-xl p-4 mb-4 text-center">
-            <div class="text-[1.5rem] mb-1.5">⏳</div>
-            <div class="font-bold text-amber-800">อัปโหลดสลิปแล้ว — รอพนักงานตรวจสอบ</div>
-            <div class="text-[0.8rem] text-amber-800 mt-1">ระบบจะอัปเดตสถานะโดยอัตโนมัติ</div>
-        </div>
-        <a href="@Url.Action("Tracking", "Customer", new { orderId = order?.OrderId })"
-           class="block bg-[#6F4E37] text-white text-center py-3.5 rounded-xl font-bold no-underline mb-3">
-            ติดตามสถานะออเดอร์
-        </a>
-    }
+                    <!-- ข้อความยืนยันเมื่อแลกสำเร็จ -->
+                    <div id="redeem-success-msg" class="hidden rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-[0.8rem] text-green-700 font-semibold text-center"></div>
 
-    <!-- ฟอร์มอัปโหลดสลิป -->
-    <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-4">
-        <div class="bg-[#6F4E37] text-white px-4 py-3 font-bold text-sm">
-            @(existingPayment != null ? "อัปโหลดสลิปใหม่" : "อัปโหลดหลักฐานการโอนเงิน")
-        </div>
-        <div class="p-4">
-
-            <!-- ขั้นตอน -->
-            <div class="text-[0.8rem] text-gray-500 mb-4 leading-loose">
-                1. โอนเงิน <strong class="text-[#3E2723]">@order?.NetAmount?.ToString("N0")฿</strong> ไปยังบัญชีร้าน<br/>
-                2. บันทึกหน้าจอสลิปการโอน<br/>
-                3. กดเลือกรูปและ "ส่งสลิป" ด้านล่าง
-            </div>
-
-            <!-- Mock PromptPay QR -->
-            <div class="text-center mb-4">
-                <div class="inline-block bg-[#f9f9f9] border-2 border-dashed border-[#C8A97E] rounded-xl p-4">
-                    <img src="https://placehold.co/180x180/EFE0C9/6F4E37?text=QR+Code"
-                         alt="QR Code" class="w-[180px] h-[180px] rounded-lg" />
-                    <div class="text-[0.72rem] text-[#8D6748] mt-2">PromptPay: 0XX-XXX-XXXX</div>
                 </div>
             </div>
 
-            <!-- Upload Form -->
-            <form asp-action="UploadSlip" asp-controller="Customer"
-                  asp-route-orderId="@order?.OrderId"
-                  method="post" enctype="multipart/form-data">
+            <!-- ปุ่มยืนยันและดำเนินการชำระเงิน -->
+            <button type="button" onclick="proceedToPayment()"
+                    class="w-full bg-[#6F4E37] text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer mb-2">
+                ยืนยันยอดและดำเนินการชำระเงิน
+            </button>
+            <p class="text-center text-[0.72rem] text-gray-400 mb-4">
+                ยอดสุทธิที่ต้องชำระ: <strong id="confirm-net-amount" class="font-['Inter'] tabular-nums text-[#6F4E37]">
+                    @order?.NetAmount?.ToString("N0")฿
+                </strong>
+            </p>
+        </div>
+    }
 
-                <label class="block w-full border-2 border-dashed border-[#C8A97E] rounded-xl p-6 text-center cursor-pointer bg-[#FDF6EC] mb-3.5"
-                       id="dropZone">
-                    <!-- Inbox icon — Heroicons outline (อัปโหลดสลิป) -->
-                    <svg class="w-9 h-9 text-[#C8A97E] mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                    </svg>
-                    <div id="dropLabel" class="text-sm font-bold text-[#6F4E37]">แตะเพื่อเลือกรูปสลิป</div>
-                    <div class="text-[0.72rem] text-gray-400 mt-1">JPG, PNG ขนาดไม่เกิน 5MB</div>
-                    <input type="file" name="slip" id="slipInput" accept="image/*"
-                           class="hidden" required onchange="previewSlip(this)" />
-                </label>
+    <!-- ===== STEP 2: อัปโหลดสลิป (ซ่อนไว้ถ้าสมาชิกยังไม่ผ่าน Step 1) ===== -->
+    <div id="step2-section" class="@(isMemberWithBenefit && !skipStep1 ? "hidden" : "")">
 
-                <!-- Preview รูปที่เลือก -->
-                <div id="previewDiv" class="hidden text-center mb-3.5">
-                    <img id="previewImg" src="" alt="Preview"
-                         class="max-w-full max-h-[200px] rounded-xl border border-[#EFE0C9]" />
+        @if (existingPayment?.PaymentStatusId == 1)
+        {
+            <div class="bg-amber-50 border border-yellow-300 rounded-xl p-4 mb-4 text-center">
+                <div class="text-[1.5rem] mb-1.5">⏳</div>
+                <div class="font-bold text-amber-800">อัปโหลดสลิปแล้ว — รอพนักงานตรวจสอบ</div>
+                <div class="text-[0.8rem] text-amber-800 mt-1">ระบบจะอัปเดตสถานะโดยอัตโนมัติ</div>
+            </div>
+            <a href="@Url.Action("Tracking", "Customer", new { orderId = order?.OrderId })"
+               class="block bg-[#6F4E37] text-white text-center py-3.5 rounded-xl font-bold no-underline mb-3">
+                ติดตามสถานะออเดอร์
+            </a>
+        }
+
+        <!-- ฟอร์มอัปโหลดสลิป -->
+        <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-4">
+            <div class="bg-[#6F4E37] text-white px-4 py-3 font-bold text-sm">
+                @(existingPayment != null ? "อัปโหลดสลิปใหม่" : "อัปโหลดหลักฐานการโอนเงิน")
+            </div>
+            <div class="p-4">
+
+                <!-- ขั้นตอน -->
+                <div class="text-[0.8rem] text-gray-500 mb-4 leading-loose">
+                    1. โอนเงิน
+                    <strong class="text-[#3E2723] font-['Inter'] tabular-nums" id="slip-net-amount">
+                        @order?.NetAmount?.ToString("N0")฿
+                    </strong>
+                    ไปยังบัญชีร้าน<br/>
+                    2. บันทึกหน้าจอสลิปการโอน<br/>
+                    3. กดเลือกรูปและ "ส่งสลิป" ด้านล่าง
                 </div>
 
-                <button type="submit"
-                        class="w-full bg-green-600 text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer">
-                    ส่งสลิป
-                </button>
-            </form>
+                <!-- Mock PromptPay QR — Demo Mode -->
+                <div class="text-center mb-4">
+                    <div class="inline-block bg-[#f9f9f9] border-2 border-dashed border-[#C8A97E] rounded-xl p-4">
+                        <img src="https://placehold.co/180x180/EFE0C9/6F4E37?text=QR+Code"
+                             alt="QR Code" class="w-[180px] h-[180px] rounded-lg" />
+                        <div class="text-[0.72rem] text-[#8D6748] mt-2">PromptPay: 0XX-XXX-XXXX</div>
+                        <div class="text-[0.72rem] text-red-400 mt-0.5 font-semibold">Demo Mode</div>
+                    </div>
+                </div>
+
+                <!-- Upload Form -->
+                <form asp-action="UploadSlip" asp-controller="Customer"
+                      asp-route-orderId="@order?.OrderId"
+                      method="post" enctype="multipart/form-data">
+
+                    <label class="block w-full border-2 border-dashed border-[#C8A97E] rounded-xl p-6 text-center cursor-pointer bg-[#FDF6EC] mb-3.5"
+                           id="dropZone">
+                        <svg class="w-9 h-9 text-[#C8A97E] mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                        <div id="dropLabel" class="text-sm font-bold text-[#6F4E37]">แตะเพื่อเลือกรูปสลิป</div>
+                        <div class="text-[0.72rem] text-gray-400 mt-1">JPG, PNG ขนาดไม่เกิน 5MB</div>
+                        <input type="file" name="slip" id="slipInput" accept="image/*"
+                               class="hidden" required onchange="previewSlip(this)" />
+                    </label>
+
+                    <!-- Preview รูปที่เลือก -->
+                    <div id="previewDiv" class="hidden text-center mb-3.5">
+                        <img id="previewImg" src="" alt="Preview"
+                             class="max-w-full max-h-[200px] rounded-xl border border-[#EFE0C9]" />
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-green-600 text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer">
+                        ส่งสลิป
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    var orderId     = @(order?.OrderId ?? 0);
+    var currentNet  = @(order?.NetAmount ?? 0);
+    var menuUrl     = '@(string.IsNullOrEmpty(tableNumber) ? Url.Action("Menu","Customer") : Url.Action("Menu","Customer", new { table = tableNumber }))';
+
     function previewSlip(input) {
         if (input.files && input.files[0]) {
             var reader = new FileReader();
@@ -205,17 +272,24 @@
         }
     }
 
-    var orderId = @(order?.OrderId ?? 0);
+    // อัปเดตยอดที่แสดงทุกจุดหลังแลกแต้ม/Stamp
+    function updateNetAmountDisplay(newNet) {
+        currentNet = newNet;
+        var formatted = newNet.toLocaleString('th-TH', { minimumFractionDigits: 0 }) + '฿';
+        var displayEl    = document.getElementById('net-amount-display');
+        var confirmEl    = document.getElementById('confirm-net-amount');
+        var slipAmountEl = document.getElementById('slip-net-amount');
+        if (displayEl)    displayEl.textContent    = formatted;
+        if (confirmEl)    confirmEl.textContent    = formatted;
+        if (slipAmountEl) slipAmountEl.textContent = formatted;
+    }
 
-    // แสดงข้อความสำเร็จและอัปเดตยอดที่หน้า
+    // แสดงข้อความสำเร็จหลังแลกแต้ม
     function showRedeemSuccess(msg, newNetAmount) {
         var successEl = document.getElementById('redeem-success-msg');
         successEl.textContent = msg;
         successEl.classList.remove('hidden');
-
-        // อัปเดตยอดที่ต้องชำระบน gradient card
-        var netEl = document.getElementById('net-amount-display');
-        if (netEl) netEl.textContent = newNetAmount.toLocaleString('th-TH', { minimumFractionDigits: 0 }) + '฿';
+        updateNetAmountDisplay(newNetAmount);
     }
 
     function customerRedeemPoints() {
@@ -242,4 +316,71 @@
             })
             .catch(function() { alert('เกิดข้อผิดพลาด กรุณาลองใหม่'); });
     }
+
+    // กดยืนยันยอดสุทธิ → ซ่อน Step 1 และแสดง Step 2
+    function proceedToPayment() {
+        document.getElementById('step1-section').style.display = 'none';
+        var step2 = document.getElementById('step2-section');
+        step2.classList.remove('hidden');
+        step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Countdown Timer — นับถอยหลังจาก ReservedUntil
+    (function () {
+        var timerEl   = document.getElementById('countdown-timer');
+        var expiredEl = document.getElementById('countdown-expired');
+        if (!timerEl) return;
+
+        var reservedUntil = new Date('@(order?.ReservedUntil?.ToString("o"))');
+        if (isNaN(reservedUntil.getTime())) return;
+
+        function onExpired() {
+            timerEl.classList.add('hidden');
+            expiredEl.classList.remove('hidden');
+
+            // ปิดปุ่มส่งสลิปและ drop zone ทันที ป้องกันลูกค้ากดส่งหลังหมดเวลา
+            var submitBtn = document.querySelector('button[type="submit"]');
+            var dropZone  = document.getElementById('dropZone');
+            var slipInput = document.getElementById('slipInput');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'หมดเวลาชำระเงิน';
+                submitBtn.style.background = '#9ca3af';
+            }
+            if (dropZone)  dropZone.style.pointerEvents = 'none';
+            if (slipInput) slipInput.disabled = true;
+
+            // แสดงปุ่มย้อนกลับไปสั่งซื้อใหม่ใต้ปุ่มส่งสลิป
+            var reorderBtn = document.createElement('a');
+            reorderBtn.href = menuUrl;
+            reorderBtn.textContent = 'สั่งซื้อใหม่';
+            reorderBtn.style.cssText = 'display:block;margin-top:0.75rem;padding:0.875rem;background:#6F4E37;color:#fff;text-align:center;border-radius:0.75rem;font-weight:700;font-size:1rem;text-decoration:none;';
+            if (submitBtn && submitBtn.parentNode) {
+                submitBtn.parentNode.insertBefore(reorderBtn, submitBtn.nextSibling);
+            }
+        }
+
+        function tick() {
+            var now  = new Date();
+            var diff = Math.floor((reservedUntil - now) / 1000); // วินาที
+
+            if (diff <= 0) {
+                onExpired();
+                return;
+            }
+
+            var m = Math.floor(diff / 60);
+            var s = diff % 60;
+            timerEl.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+
+            // เปลี่ยนสีเป็นแดงเมื่อเหลือน้อยกว่า 2 นาที
+            if (diff <= 120) {
+                timerEl.style.color = '#fca5a5';
+            }
+
+            setTimeout(tick, 1000);
+        }
+
+        tick();
+    })();
 </script>

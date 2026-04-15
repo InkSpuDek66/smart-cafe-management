@@ -25,6 +25,25 @@
         ← กลับ Queue
     </a>
 
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-error mb-4 text-sm">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success mb-4 text-sm">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>@TempData["Success"]</span>
+        </div>
+    }
 
     <div class="grid grid-cols-[1fr_1.5fr] gap-6 items-start">
 
@@ -32,7 +51,7 @@
         <div class="admin-card">
             <div class="admin-card-header">บันทึก Wastage</div>
             <div class="admin-card-body">
-                <form asp-controller="Pos" asp-action="Wastage" method="post">
+                <form asp-controller="Pos" asp-action="Wastage" method="post" id="wastageForm">
 
                     <!-- เลือกวัตถุดิบ -->
                     <div class="mb-4">
@@ -58,7 +77,9 @@
 
                     <!-- สต็อกปัจจุบัน (แสดง real-time เมื่อเลือก) -->
                     <div id="stockInfo" class="hidden mb-4 bg-amber-50 rounded-md px-3 py-2 text-[0.82rem]">
-                        สต็อกปัจจุบัน: <strong id="stockVal">—</strong>
+                        สต็อกปัจจุบัน:
+                        <strong id="stockVal" class="font-['Inter'] tabular-nums">—</strong>
+                        <span id="stockUnitLabel" class="text-gray-500"></span>
                     </div>
 
                     <!-- ปริมาณที่เสีย -->
@@ -69,8 +90,14 @@
                         <div class="flex gap-2 items-center">
                             <input type="number" name="quantity" id="quantityInput"
                                    min="0.001" step="0.001" required
+                                   oninput="validateQuantity(this)"
                                    class="flex-1 border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2.5 text-sm bg-[#fefaf6] outline-none" />
-                            <span id="unitLabel" class="text-sm text-gray-500 min-w-[40px]">—</span>
+                            <!-- แสดงหน่วยถัดจากช่อง input -->
+                            <span id="unitLabel" class="text-sm font-bold text-[#6F4E37] min-w-[40px]">—</span>
+                        </div>
+                        <!-- คำเตือนเมื่อปริมาณเกิน stock -->
+                        <div id="quantityWarning" class="hidden mt-1.5 text-[0.75rem] text-red-600 font-semibold">
+                            ปริมาณเกินสต็อกที่มีอยู่
                         </div>
                     </div>
 
@@ -83,7 +110,7 @@
                                   class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3.5 py-2 text-sm bg-[#fefaf6] outline-none resize-none"></textarea>
                     </div>
 
-                    <button type="submit"
+                    <button type="submit" id="submitBtn"
                             class="w-full bg-amber-400 text-white border-none rounded-lg py-3 text-sm font-bold cursor-pointer">
                         บันทึก Wastage
                     </button>
@@ -108,6 +135,7 @@
                             <tr>
                                 <th class="text-gray-500 text-[0.72rem] uppercase">วัตถุดิบ</th>
                                 <th class="text-right text-gray-500 text-[0.72rem] uppercase">ปริมาณ</th>
+                                <th class="text-gray-500 text-[0.72rem] uppercase">หน่วย</th>
                                 <th class="text-gray-500 text-[0.72rem] uppercase">หมายเหตุ</th>
                                 <th class="text-gray-500 text-[0.72rem] uppercase">โดย</th>
                                 <th class="text-gray-500 text-[0.72rem] uppercase">เวลา</th>
@@ -116,13 +144,32 @@
                         <tbody>
                             @foreach (var log in recentLogs)
                             {
+                                bool hasNotes = !string.IsNullOrEmpty((string?)log.Notes);
                                 <tr>
                                     <td class="text-gray-800">@log.IngredientName</td>
-                                    <td class="text-right text-red-600 font-bold">
+                                    <td class="text-right text-red-600 font-bold font-['Inter'] tabular-nums">
                                         @(Math.Abs((float)log.QuantityChange).ToString("N2"))
                                     </td>
-                                    <td class="text-gray-400 text-[0.78rem] max-w-[120px] truncate" title="@log.Notes">
-                                        @(string.IsNullOrEmpty((string?)log.Notes) ? "—" : log.Notes)
+                                    <!-- คอลัมน์หน่วย -->
+                                    <td class="text-gray-500 text-[0.78rem]">@log.Unit</td>
+                                    <!-- หมายเหตุ: กดขยายดูได้ -->
+                                    <td class="text-gray-500">
+                                        @if (hasNotes)
+                                        {
+                                            <button type="button"
+                                                    class="text-[0.75rem] text-blue-600 underline cursor-pointer bg-transparent border-none p-0"
+                                                    onclick="toggleNote(this)"
+                                                    data-notes="@log.Notes">
+                                                ดูหมายเหตุ
+                                            </button>
+                                            <div class="notes-expand hidden mt-1 text-[0.75rem] text-gray-700 bg-gray-50 rounded px-2 py-1 max-w-[160px] break-words">
+                                                @log.Notes
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-gray-300">—</span>
+                                        }
                                     </td>
                                     <td class="text-gray-500">@log.CreatedBy</td>
                                     <td class="text-gray-500">
@@ -140,19 +187,55 @@
 </div>
 
 <script>
-    // แสดงสต็อกปัจจุบันและ Unit เมื่อเลือกวัตถุดิบ
-    function updateStock(select) {
-        var opt = select.options[select.selectedIndex];
-        var stock = opt.getAttribute('data-stock');
-        var unit  = opt.getAttribute('data-unit');
+    var currentStock = 0;
 
-        if (stock && unit) {
-            document.getElementById('stockVal').textContent = parseFloat(stock).toFixed(3) + ' ' + unit;
-            document.getElementById('stockInfo').style.display = 'block';
+    // แสดงสต็อกปัจจุบัน + หน่วย เมื่อเลือกวัตถุดิบ
+    function updateStock(select) {
+        var opt   = select.options[select.selectedIndex];
+        var stock = opt.getAttribute('data-stock');
+        var unit  = opt.getAttribute('data-unit') || '—';
+
+        if (stock) {
+            currentStock = parseFloat(stock) || 0;
+            document.getElementById('stockVal').textContent      = currentStock.toFixed(3);
+            document.getElementById('stockUnitLabel').textContent = ' ' + unit;
+            document.getElementById('stockInfo').classList.remove('hidden');
             document.getElementById('unitLabel').textContent = unit;
         } else {
-            document.getElementById('stockInfo').style.display = 'none';
+            currentStock = 0;
+            document.getElementById('stockInfo').classList.add('hidden');
             document.getElementById('unitLabel').textContent = '—';
+        }
+        // ตรวจสอบ quantity ที่กรอกไว้อีกครั้งหลังเปลี่ยนวัตถุดิบ
+        validateQuantity(document.getElementById('quantityInput'));
+    }
+
+    // ตรวจสอบว่าปริมาณที่กรอกไม่เกิน stock ปัจจุบัน
+    function validateQuantity(input) {
+        var qty     = parseFloat(input.value) || 0;
+        var warning = document.getElementById('quantityWarning');
+        var btn     = document.getElementById('submitBtn');
+
+        if (currentStock > 0 && qty > currentStock) {
+            warning.classList.remove('hidden');
+            btn.disabled  = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            warning.classList.add('hidden');
+            btn.disabled  = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
+    // กดขยาย/ซ่อนหมายเหตุในตารางประวัติ
+    function toggleNote(btn) {
+        var noteDiv = btn.nextElementSibling;
+        if (noteDiv.classList.contains('hidden')) {
+            noteDiv.classList.remove('hidden');
+            btn.textContent = 'ซ่อน';
+        } else {
+            noteDiv.classList.add('hidden');
+            btn.textContent = 'ดูหมายเหตุ';
         }
     }
 </script>

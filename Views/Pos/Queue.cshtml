@@ -274,19 +274,20 @@
 
 <!-- Modal: ยืนยัน Group Check-in -->
 <dialog id="groupCheckinModal" class="modal">
-    <div class="modal-box max-w-sm">
+    <!-- บังคับ light mode เพื่อป้องกันข้อความหายในระบบ dark mode -->
+    <div class="modal-box max-w-sm" style="color-scheme:light;background:#ffffff;color:#1f2937;">
         <h3 class="text-base font-bold text-[#6F4E37] mb-2">Group Check-in</h3>
-        <div class="text-[0.82rem] text-gray-700 leading-relaxed">
-            <p class="font-semibold text-gray-800 mb-1">โปรโมชันนี้คืออะไร?</p>
+        <div class="text-[0.82rem] leading-relaxed" style="color:#374151;">
+            <p class="font-semibold mb-1" style="color:#1f2937;">โปรโมชันนี้คืออะไร?</p>
             <p class="mb-2">ลูกค้าที่มาเป็นกลุ่ม 5 คนขึ้นไป และ Check-in ร้านผ่าน Social Media จะได้รับส่วนลดพิเศษ</p>
-            <p class="font-semibold text-gray-800 mb-1">เงื่อนไข</p>
-            <ul class="list-disc pl-4 mb-3 text-gray-600 text-[0.78rem]">
+            <p class="font-semibold mb-1" style="color:#1f2937;">เงื่อนไข</p>
+            <ul class="list-disc pl-4 mb-3 text-[0.78rem]" style="color:#4b5563;">
                 <li>ลูกค้าต้องมาเป็นกลุ่มตั้งแต่ 5 คนขึ้นไป</li>
                 <li>ต้อง Check-in หรือแชร์ร้านบน Social Media (Facebook / Instagram)</li>
                 <li>พนักงานต้องตรวจสอบหน้าจอมือถือของลูกค้าด้วยตนเองก่อนกดอนุมัติ</li>
             </ul>
         </div>
-        <p class="text-[0.8rem] font-bold text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-3">
+        <p class="text-[0.8rem] font-bold rounded-lg px-3 py-2 mb-3" style="color:#92400e;background:#fffbeb;">
             กรุณายืนยันว่าได้ตรวจสอบการ Check-in ของลูกค้าแล้ว
         </p>
         <div class="modal-action">
@@ -299,6 +300,54 @@
         </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Modal: ยืนยันอนุมัติสลิป -->
+<dialog id="approveModal" class="modal">
+    <div class="modal-box max-w-sm" style="color-scheme:light;background:#ffffff;color:#1f2937;">
+        <h3 class="text-base font-bold text-[#6F4E37] mb-3">ยืนยันอนุมัติสลิป</h3>
+        <p class="text-[0.85rem] mb-1" style="color:#374151;">
+            ออเดอร์ <strong id="approveOrderLabel" style="color:#1f2937;"></strong>
+        </p>
+        <p class="text-[0.82rem] mb-4" style="color:#6b7280;">
+            ตรวจสอบยอดโอนในสลิปตรงกับราคาสั่งซื้อแล้ว?
+        </p>
+        <div class="modal-action mt-0">
+            <button type="button" onclick="closeApproveModal()"
+                    class="btn btn-sm btn-ghost">ยกเลิก</button>
+            <button type="button" id="approveConfirmBtn"
+                    class="btn btn-sm bg-green-600 text-white border-none hover:bg-green-700">
+                อนุมัติ
+            </button>
+        </div>
+    </div>
+    <div class="modal-backdrop" onclick="closeApproveModal()"></div>
+</dialog>
+
+<!-- Modal: ปฏิเสธสลิป พร้อมเหตุผล -->
+<dialog id="rejectModal" class="modal">
+    <div class="modal-box max-w-sm" style="color-scheme:light;background:#ffffff;color:#1f2937;">
+        <h3 class="text-base font-bold text-red-700 mb-3">ปฏิเสธสลิป</h3>
+        <p class="text-[0.82rem] mb-3" style="color:#374151;">เลือกเหตุผลที่ปฏิเสธ</p>
+        <select id="rejectReasonSelect"
+                class="select select-bordered w-full bg-[#fefaf6] border-[#d9c9b6] text-sm mb-4 outline-none"
+                style="color:#1f2937;">
+            <option value="ยอดโอนไม่ตรง">ยอดโอนไม่ตรงกับราคาสั่งซื้อ</option>
+            <option value="สลิปซ้ำ">สลิปซ้ำหรือใช้แล้ว</option>
+            <option value="สลิปไม่ชัดเจน">รูปสลิปไม่ชัดเจน อ่านไม่ได้</option>
+            <option value="วันที่ไม่ถูกต้อง">วันที่ / เวลาโอนไม่ถูกต้อง</option>
+            <option value="อื่นๆ">อื่นๆ (ระบุด้วยวาจา)</option>
+        </select>
+        <div class="modal-action mt-0">
+            <button type="button" onclick="closeRejectModal()"
+                    class="btn btn-sm btn-ghost">ยกเลิก</button>
+            <button type="button" id="rejectConfirmBtn"
+                    class="btn btn-sm bg-red-600 text-white border-none hover:bg-red-700">
+                ยืนยันปฏิเสธ
+            </button>
+        </div>
+    </div>
+    <div class="modal-backdrop" onclick="closeRejectModal()"></div>
 </dialog>
 
 <!-- แจ้งเตือน Slip ใหม่จาก SignalR -->
@@ -437,13 +486,16 @@
                             </div>
                         }
 
-                        <!-- ปุ่ม Group Check-in: เปิด modal ยืนยันพร้อมอธิบายเงื่อนไข -->
-                        <div class="mt-1.5">
-                            <button class="btn-group-checkin"
-                                    onclick="openGroupCheckinModal(@order.OrderId)">
-                                Group Check-in
-                            </button>
-                        </div>
+                        <!-- ปุ่ม Group Check-in: แสดงเฉพาะออเดอร์ที่มีเครื่องดื่ม Coffee/Non-Coffee -->
+                        @if (order.Items.Any(i => i.Category == "Coffee" || i.Category == "Non-Coffee"))
+                        {
+                            <div class="mt-1.5">
+                                <button class="btn-group-checkin"
+                                        onclick="openGroupCheckinModal(@order.OrderId)">
+                                    Group Check-in
+                                </button>
+                            </div>
+                        }
                     </div>
                 </div>
             }
@@ -476,7 +528,7 @@
                         <div class="flex items-center gap-2">
                             @if (!string.IsNullOrEmpty(order.QueueNumber))
                             {
-                                <span class="font-serif text-[1.1rem] font-bold text-[#6F4E37]">
+                                <span class="font-['Inter'] font-bold tabular-nums tracking-tight text-[1.1rem] text-[#6F4E37]">
                                     @order.QueueNumber
                                 </span>
                             }
@@ -610,15 +662,36 @@
         .then(() => connection.invoke("JoinGroup", "staff"))
         .catch(err => console.warn("SignalR connect failed:", err));
 
-    // Approve สลิปจากหน้า POS Queue โดยตรง
+    // ===== Approve / Reject Modal State =====
+    var _approvePaymentId = 0;
+    var _approveOrderId   = 0;
+    var _approveTriggerBtn = null;
+    var _rejectPaymentId  = 0;
+    var _rejectTriggerBtn = null;
+
+    // เปิด Approve Modal
     function approvePosPayment(paymentId, orderId, btn) {
-        if (!confirm('อนุมัติสลิปออเดอร์ #' + orderId + '?')) return;
-        btn.disabled = true;
-        btn.textContent = '...';
+        _approvePaymentId  = paymentId;
+        _approveOrderId    = orderId;
+        _approveTriggerBtn = btn;
+        document.getElementById('approveOrderLabel').textContent = '#' + orderId;
+        document.getElementById('approveModal').showModal();
+    }
+
+    function closeApproveModal() {
+        document.getElementById('approveModal').close();
+    }
+
+    // กดยืนยันใน Approve Modal
+    document.getElementById('approveConfirmBtn').addEventListener('click', function () {
+        var btn = _approveTriggerBtn;
+        closeApproveModal();
+        if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
         fetch('/Pos/ApprovePaymentAtPos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'paymentId=' + paymentId
+            body: 'paymentId=' + _approvePaymentId
         })
         .then(r => r.json())
         .then(data => {
@@ -626,22 +699,35 @@
                 location.reload();
             } else {
                 alert(data.message);
-                btn.disabled = false;
-                btn.textContent = 'อนุมัติ';
+                if (btn) { btn.disabled = false; btn.textContent = 'อนุมัติ'; }
             }
         })
-        .catch(() => { btn.disabled = false; btn.textContent = 'อนุมัติ'; });
+        .catch(() => { if (btn) { btn.disabled = false; btn.textContent = 'อนุมัติ'; } });
+    });
+
+    // เปิด Reject Modal
+    function rejectPosPayment(paymentId, btn) {
+        _rejectPaymentId  = paymentId;
+        _rejectTriggerBtn = btn;
+        document.getElementById('rejectReasonSelect').selectedIndex = 0;
+        document.getElementById('rejectModal').showModal();
     }
 
-    // Reject สลิปจากหน้า POS Queue โดยตรง
-    function rejectPosPayment(paymentId, btn) {
-        if (!confirm('ปฏิเสธสลิปนี้?')) return;
-        btn.disabled = true;
-        btn.textContent = '...';
+    function closeRejectModal() {
+        document.getElementById('rejectModal').close();
+    }
+
+    // กดยืนยันใน Reject Modal
+    document.getElementById('rejectConfirmBtn').addEventListener('click', function () {
+        var btn    = _rejectTriggerBtn;
+        var reason = document.getElementById('rejectReasonSelect').value;
+        closeRejectModal();
+        if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
         fetch('/Pos/RejectPaymentAtPos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'paymentId=' + paymentId
+            body: 'paymentId=' + _rejectPaymentId + '&reason=' + encodeURIComponent(reason)
         })
         .then(r => r.json())
         .then(data => {
@@ -649,12 +735,11 @@
                 location.reload();
             } else {
                 alert(data.message);
-                btn.disabled = false;
-                btn.textContent = 'ปฏิเสธ';
+                if (btn) { btn.disabled = false; btn.textContent = 'ปฏิเสธ'; }
             }
         })
-        .catch(() => { btn.disabled = false; btn.textContent = 'ปฏิเสธ'; });
-    }
+        .catch(() => { if (btn) { btn.disabled = false; btn.textContent = 'ปฏิเสธ'; } });
+    });
 
     // เปิด Modal ยืนยัน Group Check-in พร้อมอธิบายเงื่อนไข
     var groupCheckinOrderId = 0;
@@ -684,12 +769,22 @@
             btn.disabled = false;
             btn.textContent = 'ยืนยันอนุมัติ';
             if (data.ok) {
+                // อัปเดตยอดบนการ์ดออเดอร์
                 var netEl = document.getElementById('net-' + groupCheckinOrderId);
-                if (netEl) netEl.textContent = Number(data.newNetAmount).toLocaleString('th-TH', { maximumFractionDigits: 0 }) + '฿';
+                var discStr = Number(data.discount).toLocaleString('th-TH', { maximumFractionDigits: 0 });
+                var netStr  = Number(data.newNetAmount).toLocaleString('th-TH', { maximumFractionDigits: 0 });
+                if (netEl) netEl.textContent = netStr + '฿';
                 if (groupCheckinTriggerBtn) {
-                    groupCheckinTriggerBtn.textContent = 'อนุมัติแล้ว -' + data.discount + '฿';
+                    groupCheckinTriggerBtn.textContent = 'อนุมัติแล้ว (ลด ' + discStr + '฿)';
                     groupCheckinTriggerBtn.disabled = true;
+                    groupCheckinTriggerBtn.style.background = '#16a34a';
                 }
+                // แสดง toast แจ้งพนักงาน
+                var toast = document.createElement('div');
+                toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;padding:10px 20px;border-radius:12px;font-size:0.85rem;font-weight:bold;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
+                toast.textContent = 'Group Check-in อนุมัติแล้ว ลด ' + discStr + '฿ → ยอดใหม่ ' + netStr + '฿';
+                document.body.appendChild(toast);
+                setTimeout(function () { toast.remove(); }, 4000);
             } else {
                 alert(data.message);
             }

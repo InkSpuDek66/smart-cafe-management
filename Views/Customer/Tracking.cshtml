@@ -41,7 +41,7 @@
         <div class="text-white rounded-[14px] px-5 py-5 mb-4 text-center"
              style="background:linear-gradient(135deg,#6F4E37,#3E2723);">
             <div class="text-[0.8rem] opacity-75">หมายเลขคิวของคุณ</div>
-            <div class="font-serif text-[4rem] font-bold leading-none tracking-wide">
+            <div class="font-['Inter'] font-bold tabular-nums text-[4rem] leading-none tracking-tight">
                 @order.QueueNumber
             </div>
             <div class="text-[0.8rem] opacity-75 mt-1">กรุณารอเรียกคิว</div>
@@ -249,8 +249,8 @@
             </div>
         }
 
-        <!-- ปุ่ม Logout (แสดงตลอดเมื่อเป็น Member) -->
-        <button type="button" onclick="submitLogout()"
+        <!-- ปุ่ม Logout — ผ่าน requestLogout() เพื่อตรวจ active order ก่อน -->
+        <button type="button" onclick="requestLogout()"
                 class="flex items-center justify-center gap-2 w-full mt-1 mb-6 bg-transparent border border-[#C8A882] text-[#8D6748] py-2.5 rounded-xl text-sm font-semibold cursor-pointer">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round"

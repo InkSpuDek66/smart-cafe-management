@@ -1,0 +1,106 @@
+@* Views/Customer/EditProfile.cshtml *@
+@using Project_CSI402_T2_Y3.Models.Db
+@{
+    ViewData["Title"] = "ข้อมูลสมาชิก";
+    Layout = "_MobileLayout";
+    var member = ViewBag.Member as Member;
+    ViewBag.CartCount = 0;
+}
+
+<div class="p-4">
+
+    <a href="@Url.Action("Rewards", "Customer")"
+       class="inline-flex items-center gap-1 text-[#6F4E37] text-sm font-bold no-underline mb-4">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        กลับ
+    </a>
+
+    <h2 class="text-[1.25rem] font-bold text-[#3E2723] mb-1">ข้อมูลสมาชิก</h2>
+    <p class="text-[0.8rem] text-[#8D6748] mb-4">รหัสสมาชิก <strong>@member?.MemberId</strong></p>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="bg-green-50 border border-green-300 rounded-xl px-4 py-3 mb-4 text-[0.82rem] text-green-800 font-semibold">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="bg-red-50 border border-red-300 rounded-xl px-4 py-3 mb-4 text-[0.82rem] text-red-800">
+            @TempData["Error"]
+        </div>
+    }
+
+    <!-- สรุปแต้มและ Stamp -->
+    <div class="rounded-2xl text-white px-5 py-4 mb-4"
+         style="background:linear-gradient(135deg,#6F4E37,#3E2723);">
+        <div class="flex justify-between items-center">
+            <div>
+                <div class="text-[0.72rem] opacity-70 uppercase tracking-wider">แต้มสะสม</div>
+                <div class="font-bold text-[1.6rem] font-['Inter'] tabular-nums leading-none mt-0.5">
+                    @(member?.Points?.ToString("N0") ?? "0")
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-[0.72rem] opacity-70 uppercase tracking-wider">Stamp Card</div>
+                <div class="font-bold text-[1.6rem] font-['Inter'] tabular-nums leading-none mt-0.5">
+                    @(member?.StampBalance ?? 0)<span class="text-[1rem] opacity-60">/10</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ฟอร์มแก้ไขข้อมูล -->
+    <form asp-action="EditProfile" asp-controller="Customer" method="post">
+        <div class="bg-white rounded-xl border border-[#EFE0C9] overflow-hidden mb-4">
+            <div class="bg-[#6F4E37] text-white px-4 py-3 font-bold text-sm">แก้ไขข้อมูลส่วนตัว</div>
+            <div class="p-4 flex flex-col gap-3.5">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">ชื่อ *</label>
+                        <input type="text" name="firstName" required
+                               value="@member?.FirstName"
+                               class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">นามสกุล *</label>
+                        <input type="text" name="lastName" required
+                               value="@member?.LastName"
+                               class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">เบอร์โทร (ปัจจุบัน)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" readonly value="@member?.Phone"
+                               class="flex-1 border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-gray-100 text-gray-500" />
+                        <a href="@Url.Action("ChangePhone", "Customer")"
+                           class="flex-shrink-0 bg-amber-100 border border-amber-400 text-amber-800 text-[0.75rem] font-bold px-3 py-2.5 rounded-lg no-underline whitespace-nowrap">
+                            เปลี่ยนเบอร์
+                        </a>
+                    </div>
+                    <div class="text-[0.7rem] text-gray-400 mt-0.5">การเปลี่ยนเบอร์ต้องผ่านขั้นตอนยืนยันตัวตน</div>
+                </div>
+
+                <div>
+                    <label class="block text-[0.75rem] font-bold text-[#6F4E37] uppercase tracking-wide mb-1">วันเกิด</label>
+                    <input type="date" name="birthDate"
+                           value="@member?.BirthDate?.ToString("yyyy-MM-dd")"
+                           class="w-full border-[1.5px] border-[#d9c9b6] rounded-lg px-3 py-2.5 text-sm bg-[#fefaf6] outline-none" />
+                    <div class="text-[0.7rem] text-gray-400 mt-0.5">รับโปรโมชั่นพิเศษวันเกิด — <strong>ปี ค.ศ.</strong> เช่น 1995 (ปีไทยลบ 543)</div>
+                </div>
+
+            </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-[#6F4E37] text-white border-none py-3.5 rounded-xl text-base font-bold cursor-pointer">
+            บันทึกข้อมูล
+        </button>
+    </form>
+
+</div>

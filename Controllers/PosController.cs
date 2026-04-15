@@ -44,9 +44,18 @@ public class PosController : Controller
         // Barista (1), Cashier (2), Manager (3), Owner (5) เข้าถึงได้
         if (!HasRole(1, 2, 3, 5)) return ForbiddenRedirect();
 
-        // ตรวจสอบ Reservation หมดอายุ → Cancel ออเดอร์ที่ยังไม่ชำระและเกิน 5 นาทีแล้ว
+        // ตรวจสอบ Reservation หมดอายุ → Cancel เฉพาะออเดอร์ที่ไม่มีสลิปรอ Verify
+        // ออเดอร์ที่ลูกค้าอัปโหลดสลิปแล้ว (PaymentStatusId=1) ต้องรอพนักงานตรวจก่อน ห้าม Cancel
+        var ordersWithPendingSlip = _db.Payments
+            .Where(p => p.PaymentStatusId == 1)
+            .Select(p => p.OrderId)
+            .Distinct()
+            .ToList();
+
         var expiredOrders = _db.Orders
-            .Where(o => o.OrderStatusId == 1 && o.ReservedUntil < DateTime.Now)
+            .Where(o => o.OrderStatusId == 1
+                     && o.ReservedUntil < DateTime.Now
+                     && !ordersWithPendingSlip.Contains(o.OrderId))
             .ToList();
 
         if (expiredOrders.Any())
@@ -80,7 +89,7 @@ public class PosController : Controller
         }
 
         // โหลด lookup tables
-        var menuDict        = _db.Menuitems.ToDictionary(m => m.MenuItemId, m => m.MenuName);
+        var menuDict        = _db.Menuitems.ToDictionary(m => m.MenuItemId, m => new { m.MenuName, m.Category });
         var tableDict       = _db.Tables.ToDictionary(t => t.TableId, t => t.TableNumber);
         var statusDict      = _db.Orderstatuses.ToDictionary(s => s.OrderStatusId, s => s.StatusName);
         var itemStatusDict  = _db.Orderitemstatuses.ToDictionary(s => s.OrderItemStatusId, s => s.StatusName);
@@ -108,11 +117,14 @@ public class PosController : Controller
                     .Select(op => $"{op.OptionName}: {op.OptionValue}")
                     .ToList();
 
+                var menuInfo = menuDict.GetValueOrDefault(i.MenuItemId ?? 0);
                 return new PosOrderItemRow
                 {
                     OrderItemId = i.OrderItemId,
                     MenuItemId  = i.MenuItemId ?? 0,
-                    MenuName    = menuDict.GetValueOrDefault(i.MenuItemId ?? 0),
+                    MenuName    = menuInfo?.MenuName,
+                    Category    = menuInfo?.Category,
+                    UnitPrice   = i.UnitPrice,
                     Quantity    = i.Quantity,
                     StatusId    = i.OrderItemStatusId,
                     StatusName  = itemStatusDict.GetValueOrDefault(i.OrderItemStatusId ?? 0),
@@ -294,8 +306,9 @@ public class PosController : Controller
         _db.SaveChanges();
 
         // ตรวจสอบว่าทุก Item ของออเดอร์นี้ Done หมดแล้วหรือยัง
+        // ต้องมี Item อย่างน้อย 1 รายการ ก่อนจะถือว่า allDone
         var allItems = _db.Orderitems.Where(i => i.OrderId == item.OrderId).ToList();
-        bool allDone = allItems.All(i => i.OrderItemStatusId == 3);
+        bool allDone = allItems.Any() && allItems.All(i => i.OrderItemStatusId == 3);
 
         if (allDone)
         {
@@ -430,6 +443,8 @@ public class PosController : Controller
         var ingredientDict = _db.Ingredients.ToDictionary(i => i.IngredientId, i => i.IngredientName);
         var staffDict      = _db.Staff.ToDictionary(s => s.StaffId, s => (s.FirstName + " " + s.LastName).Trim());
 
+        var ingredientFullDict = _db.Ingredients.ToDictionary(i => i.IngredientId, i => i);
+
         ViewBag.RecentLogs = _db.Inventorylogs
             .Where(l => l.ReasonTypeId == 2)
             .OrderByDescending(l => l.CreatedAt)
@@ -439,6 +454,7 @@ public class PosController : Controller
             {
                 l.LogId,
                 IngredientName = ingredientDict.GetValueOrDefault(l.IngredientId ?? 0, "?"),
+                Unit           = ingredientFullDict.TryGetValue(l.IngredientId ?? 0, out var ing) ? ing.Unit : "—",
                 l.QuantityChange,
                 l.Notes,
                 CreatedBy      = l.CreatedBy.HasValue ? staffDict.GetValueOrDefault(l.CreatedBy.Value, "?") : "?",
@@ -571,6 +587,12 @@ public class PosController : Controller
         var order = _db.Orders.Find(payment.OrderId);
         if (order == null) return Json(new { ok = false, message = "ไม่พบออเดอร์" });
 
+        // ตรวจสอบสถานะออเดอร์ก่อน Approve
+        if (order.OrderStatusId == 6)
+            return Json(new { ok = false, message = "ออเดอร์นี้ถูกยกเลิกอัตโนมัติแล้ว ไม่สามารถอนุมัติสลิปได้" });
+        if (order.OrderStatusId != 1)
+            return Json(new { ok = false, message = "สถานะออเดอร์ไม่ถูกต้อง (อนุมัติได้เฉพาะออเดอร์ที่รอชำระ)" });
+
         // อัปเดต Payment
         payment.PaymentStatusId = 2;    // Approved
         payment.VerifiedBy      = staffId;
@@ -610,7 +632,10 @@ public class PosController : Controller
             }
         }
 
-        // คำนวณ Points และ Stamp ให้สมาชิก
+        // บันทึก Payment, Order, InventoryLogs ทั้งหมดก่อน
+        _db.SaveChanges();
+
+        // คำนวณ Points และ Stamp ให้สมาชิก (รันหลัง SaveChanges เพื่อให้ Order ถูก Commit แล้ว)
         if (order.MemberId.HasValue)
         {
             var member = _db.Members.Find(order.MemberId.Value);
@@ -621,6 +646,7 @@ public class PosController : Controller
 
                 int nextTransId = (_db.Pointtransactions.Any() ? _db.Pointtransactions.Max(t => t.TransId) : 0) + 1;
 
+                // TypeId=1 (PointEarn) — เพิ่มเสมอแม้ earnedPoints = 0 เพื่อให้ประวัติครบ
                 _db.Pointtransactions.Add(new Pointtransaction
                 {
                     TransId    = nextTransId,
@@ -632,35 +658,25 @@ public class PosController : Controller
                     CreatedAt  = DateTime.Now
                 });
 
-                // นับ Stamp จากเมนู Coffee/Non-Coffee
-                int coffeeItems = (from oi in orderItems
-                                   join mi in _db.Menuitems on oi.MenuItemId equals mi.MenuItemId
-                                   where mi.Category == "Coffee" || mi.Category == "Non-Coffee"
-                                   select oi.Quantity ?? 0).Sum();
+                // บันทึก PointEarn + member.Points ก่อน เพื่อให้ TransId ถูก Commit ก่อน query Max ครั้งถัดไป
+                _db.SaveChanges();
 
-                if (coffeeItems > 0)
+                // TypeId=3 (StampEarn) — query Max ใหม่หลัง SaveChanges เพื่อป้องกัน PK ชน
+                member.StampBalance = (member.StampBalance ?? 0) + 1;
+                int nextStampTransId = _db.Pointtransactions.Max(t => t.TransId) + 1;
+                _db.Pointtransactions.Add(new Pointtransaction
                 {
-                    member.StampBalance = (member.StampBalance ?? 0) + coffeeItems;
-
-                    // ใช้ nextTransId + 1 แทนการ query DB ซ้ำ
-                    // เพราะ Points transaction ถูกเพิ่มใน memory แล้วแต่ยังไม่ SaveChanges
-                    // query DB ซ้ำจะได้ค่าเดิมทำให้ TransId ซ้ำ → Primary Key violation
-                    int nextStampId = nextTransId + 1;
-                    _db.Pointtransactions.Add(new Pointtransaction
-                    {
-                        TransId    = nextStampId,
-                        MemberId   = member.MemberId,
-                        TypeId     = 3,
-                        Amount     = coffeeItems,
-                        RefOrderId = order.OrderId,
-                        CreatedBy  = staffId,
-                        CreatedAt  = DateTime.Now
-                    });
-                }
+                    TransId    = nextStampTransId,
+                    MemberId   = member.MemberId,
+                    TypeId     = 3,
+                    Amount     = 1,
+                    RefOrderId = order.OrderId,
+                    CreatedBy  = staffId,
+                    CreatedAt  = DateTime.Now
+                });
+                _db.SaveChanges();
             }
         }
-
-        _db.SaveChanges();
 
         // แจ้ง Customer ว่า Payment ผ่านแล้ว
         await _hub.Clients.Group($"order-{order.OrderId}").SendAsync("NotifyOrderPaid", new
@@ -702,34 +718,57 @@ public class PosController : Controller
 
     // =====================================================================
     // ApproveGroupCheckin — พนักงาน Manual Approve โปรโมชัน Group Check-in (AJAX POST)
-    // ตรวจสอบโปรโมชัน ConditionType=GroupCheckin ที่ IsActive=1 แล้วนำ RewardValue มาลดราคา
+    // ส่วนลด = ราคาเครื่องดื่มราคาต่ำสุดในออเดอร์ (แทน "ฟรี 1 แก้ว")
+    // หลังอนุมัติ → ส่ง SignalR NotifyGroupCheckinApproved ให้ลูกค้า reload หน้าชำระเงิน
     // =====================================================================
     [HttpPost]
-    public IActionResult ApproveGroupCheckin(int orderId)
+    public async Task<IActionResult> ApproveGroupCheckin(int orderId)
     {
         if (!IsLoggedIn()) return Json(new { ok = false, message = "ไม่ได้ Login" });
-        // Cashier (2), Manager (3), Owner (5) อนุมัติ Group Check-in ได้
         if (!HasRole(2, 3, 5)) return Json(new { ok = false, message = "ไม่มีสิทธิ์" });
 
         var order = _db.Orders.Find(orderId);
         if (order == null || order.OrderStatusId != 1)
-            return Json(new { ok = false, message = "ไม่พบออเดอร์หรือสถานะไม่ถูกต้อง" });
+            return Json(new { ok = false, message = "ไม่พบออเดอร์หรือสถานะไม่ถูกต้อง (ต้องรออนุมัติก่อนลูกค้าชำระ)" });
 
-        // ดึงโปรโมชัน GroupCheckin ที่เปิดใช้งานอยู่
-        var promo = _db.Promotions.FirstOrDefault(p =>
+        // ตรวจสอบว่าโปรโมชัน GroupCheckin เปิดอยู่
+        var promoExists = _db.Promotions.Any(p =>
             p.ConditionType == "GroupCheckin" && p.IsActive == (ulong)1);
-
-        if (promo == null)
+        if (!promoExists)
             return Json(new { ok = false, message = "ไม่มีโปรโมชัน Group Check-in ที่เปิดใช้งาน" });
 
-        // RewardValue คือจำนวนเงินที่ลด (เก็บเป็น string ใน DB)
-        if (!decimal.TryParse(promo.RewardValue, out decimal discount) || discount <= 0)
-            return Json(new { ok = false, message = "ค่า Reward ของโปรโมชันไม่ถูกต้อง" });
+        // คำนวณส่วนลด = ราคาเครื่องดื่ม (Coffee/Non-Coffee) ต่ำสุดในออเดอร์
+        // ถ้าไม่มีเมนู Coffee/Non-Coffee ให้ใช้รายการราคาต่ำสุดแทน
+        var orderItems = (from oi in _db.Orderitems
+                          join mi in _db.Menuitems on oi.MenuItemId equals mi.MenuItemId
+                          where oi.OrderId == orderId && (oi.UnitPrice ?? 0) > 0
+                          select new { oi.UnitPrice, mi.Category }).ToList();
+
+        if (!orderItems.Any())
+            return Json(new { ok = false, message = "ไม่พบรายการในออเดอร์" });
+
+        // โปรนี้คือ "รับเครื่องดื่มฟรี 1 แก้ว" — ต้องมี Coffee/Non-Coffee ในออเดอร์
+        var drinkItems = orderItems.Where(i => i.Category == "Coffee" || i.Category == "Non-Coffee").ToList();
+        if (!drinkItems.Any())
+            return Json(new { ok = false, message = "ออเดอร์นี้ไม่มีเครื่องดื่ม ไม่สามารถใช้โปรโมชัน Group Check-in ได้" });
+
+        decimal discount = drinkItems.Min(i => i.UnitPrice ?? 0);
+
+        if (discount <= 0)
+            return Json(new { ok = false, message = "ไม่สามารถคำนวณส่วนลดได้" });
 
         order.DiscountAmount = (order.DiscountAmount ?? 0) + discount;
         order.NetAmount      = Math.Max(0, (order.TotalAmount ?? 0) - (order.DiscountAmount ?? 0));
 
         _db.SaveChanges();
+
+        // แจ้งลูกค้าว่าได้รับส่วนลด Group Check-in → ให้ reload หน้าชำระเงิน
+        await _hub.Clients.Group($"order-{orderId}").SendAsync("NotifyGroupCheckinApproved", new
+        {
+            orderId,
+            discount,
+            newNetAmount = order.NetAmount
+        });
 
         return Json(new { ok = true, newNetAmount = order.NetAmount, discount });
     }
@@ -853,6 +892,14 @@ public class PosController : Controller
         if (ingredient == null)
         {
             TempData["Error"] = "ไม่พบวัตถุดิบที่เลือก";
+            return RedirectToAction("Wastage");
+        }
+
+        // ตรวจสอบว่าปริมาณที่บันทึกไม่เกิน stock ที่มีอยู่จริง
+        float availableStock = (ingredient.StockQuantity ?? 0) - (ingredient.ReservedQty ?? 0);
+        if (quantity > availableStock)
+        {
+            TempData["Error"] = $"ปริมาณที่บันทึก ({quantity} {ingredient.Unit}) เกินกว่าสต็อกที่มี ({availableStock:N2} {ingredient.Unit}) กรุณาตรวจสอบอีกครั้ง";
             return RedirectToAction("Wastage");
         }
 

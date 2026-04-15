@@ -21,7 +21,10 @@ public partial class Menuitem
 
     public ulong? IsSeasonal { get; set; }
 
-    public DateOnly? SeasonStartDate { get; set; }
+    public DateTime? SeasonStartDate { get; set; }
 
-    public DateOnly? SeasonEndDate { get; set; }
+    public DateTime? SeasonEndDate { get; set; }
+
+    // กลุ่มท็อปปิ้ง: null=ค่าเริ่มต้น(ทุกตัวเลือก), "Soda"=ไม่มีนม+มีผลไม้, "Coffee"=ค่าเริ่มต้น, "NoMilk"=ไม่มีตัวเลือกนม
+    public string? ToppingGroup { get; set; }
 }

@@ -69,6 +69,7 @@
             gap: 1rem;
         }
 
+        /* card สีขึ้นอยู่กับ StatusId: paid=น้ำเงิน, preparing=เหลือง, ready=เขียว */
         .queue-card {
             background: #2a1a10;
             border: 2px solid #C8A97E;
@@ -76,16 +77,26 @@
             padding: 1.5rem;
             text-align: center;
             animation: popIn 0.4s ease;
+            transition: border-color 0.3s;
         }
+
+        .queue-card[data-status="2"] { border-color: #60a5fa; }
+        .queue-card[data-status="3"] { border-color: #fbbf24; }
+        .queue-card[data-status="4"] { border-color: #34d399; }
 
         .queue-no {
             font-family: 'Inter', 'Noto Sans Thai', sans-serif;
             font-size: 3.5rem;
             font-weight: 800;
             letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
             color: #fbbf24;
             line-height: 1;
         }
+
+        .queue-card[data-status="2"] .queue-no { color: #93c5fd; }
+        .queue-card[data-status="3"] .queue-no { color: #fbbf24; }
+        .queue-card[data-status="4"] .queue-no { color: #6ee7b7; }
 
         .queue-table {
             font-size: 0.875rem;
@@ -93,18 +104,19 @@
             margin-top: 0.4rem;
         }
 
-        .ready-badge {
+        .status-badge {
             display: inline-block;
-            background: #16a34a;
-            color: #fff;
             border-radius: 99px;
             padding: 0.2rem 0.7rem;
             font-size: 0.7rem;
             font-weight: 700;
             margin-top: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.06em;
         }
+
+        .badge-paid      { background: #1d4ed8; color: #bfdbfe; }
+        .badge-preparing { background: #92400e; color: #fef3c7; }
+        .badge-ready     { background: #15803d; color: #dcfce7; }
 
         .empty-ready {
             grid-column: 1 / -1;
@@ -204,20 +216,27 @@
                 @if (readyOrders == null || !readyOrders.Any())
                 {
                     <div class="empty-ready">
-                        ไม่มีออเดอร์พร้อมเสิร์ฟในขณะนี้
+                        ไม่มีออเดอร์ในขณะนี้
                     </div>
                 }
                 else
                 {
                     @foreach (var o in readyOrders)
                     {
-                        <div class="queue-card" data-order-id="@o.OrderId">
+                        string badgeClass = ((int)o.StatusId) switch
+                        {
+                            2 => "badge-paid",
+                            3 => "badge-preparing",
+                            4 => "badge-ready",
+                            _ => "badge-ready"
+                        };
+                        <div class="queue-card" data-order-id="@o.OrderId" data-status="@o.StatusId">
                             <div class="queue-no">@o.QueueNumber</div>
                             @if (!string.IsNullOrEmpty((string)o.TableNumber))
                             {
                                 <div class="queue-table">โต๊ะ @o.TableNumber</div>
                             }
-                            <div><span class="ready-badge">พร้อมรับ</span></div>
+                            <div><span class="status-badge @badgeClass">@o.StatusLabel</span></div>
                         </div>
                     }
                 }
@@ -289,18 +308,30 @@
 
         var grid = document.getElementById('queueGrid');
 
-        // ป้องกัน card ซ้ำ — ถ้ามี card ของ orderId นี้อยู่แล้วให้ข้ามไป
-        if (grid.querySelector('[data-order-id="' + data.orderId + '"]')) return;
+        // อัปเดต card ที่มีอยู่แล้วให้แสดงสถานะ Ready แทนการสร้างใหม่
+        var existing = grid.querySelector('[data-order-id="' + data.orderId + '"]');
+        if (existing) {
+            existing.setAttribute('data-status', '4');
+            var badge = existing.querySelector('.status-badge');
+            if (badge) {
+                badge.className = 'status-badge badge-ready';
+                badge.textContent = 'พร้อมรับ';
+            }
+            var queueNo = existing.querySelector('.queue-no');
+            if (queueNo) queueNo.style.color = '#6ee7b7';
+            return;
+        }
 
-        // ลบข้อความ "ไม่มีออเดอร์" ออกก่อน
+        // ถ้ายังไม่มี card → สร้างใหม่ (กรณี page ยังไม่ reload)
         var empty = grid.querySelector('.empty-ready');
         if (empty) empty.remove();
 
         var card = document.createElement('div');
         card.className = 'queue-card';
         card.setAttribute('data-order-id', data.orderId);
-        card.innerHTML = '<div class="queue-no">' + data.queueNumber + '</div>'
-                       + '<div><span class="ready-badge">พร้อมรับ</span></div>';
+        card.setAttribute('data-status', '4');
+        card.innerHTML = '<div class="queue-no" style="color:#6ee7b7;">' + data.queueNumber + '</div>'
+                       + '<div><span class="status-badge badge-ready">พร้อมรับ</span></div>';
         grid.appendChild(card);
     });
 

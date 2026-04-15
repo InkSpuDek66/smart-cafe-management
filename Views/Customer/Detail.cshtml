@@ -82,7 +82,7 @@
 
         @if (Model.ShowDrinkOptions)
         {
-            <!-- ===== ระดับความหวาน (เฉพาะเครื่องดื่ม) ===== -->
+            <!-- ===== ระดับความหวาน ===== -->
             <div class="mb-4">
                 <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ระดับความหวาน</div>
                 <div class="flex flex-wrap gap-1.5">
@@ -97,23 +97,58 @@
                 </div>
             </div>
 
-            <!-- ===== ประเภทนม (เฉพาะเครื่องดื่ม) ===== -->
-            <div class="mb-4">
-                <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ประเภทนม</div>
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach (var opt in Model.MilkOptions)
-                    {
-                        <label class="cursor-pointer">
-                            <input type="radio" name="milkType" value="@opt.Label" class="hidden"
-                                   data-price="@opt.PriceAdj"
-                                   @(opt.Label == "นมสด" ? "checked" : "") />
-                            <span class="option-chip @(opt.Label == "นมสด" ? "selected" : "")">@opt.Label</span>
-                        </label>
-                    }
+            @if (Model.HasMilkOptions)
+            {
+                <!-- ===== ประเภทนม (เฉพาะเมนูที่รองรับ) ===== -->
+                <div class="mb-4">
+                    <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ประเภทนม</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (var opt in Model.MilkOptions)
+                        {
+                            <label class="cursor-pointer">
+                                <input type="radio" name="milkType" value="@opt.Label" class="hidden"
+                                       data-price="@opt.PriceAdj"
+                                       @(opt.Label == "นมสด" ? "checked" : "") />
+                                <span class="option-chip @(opt.Label == "นมสด" ? "selected" : "")">@opt.Label</span>
+                            </label>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
+            else
+            {
+                <!-- เมนูนี้ไม่มีตัวเลือกนม — ส่ง hidden value เพื่อไม่ให้ Controller error -->
+                <input type="hidden" name="milkType" value="ไม่ใส่นม" />
+            }
 
-            <!-- ===== ขนาด (เฉพาะเครื่องดื่ม) ===== -->
+            @if (Model.HasFruitToppings)
+            {
+                <!-- ===== ท็อปปิ้งผลไม้ (เฉพาะ ToppingGroup = Soda) ===== -->
+                <div class="mb-4">
+                    <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">
+                        ท็อปปิ้งผลไม้
+                    </div>
+                    <div class="text-[0.7rem] text-gray-400 mb-1.5">เมนูนี้ไม่รองรับการเพิ่มนม</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (var opt in Model.FruitToppingOptions)
+                        {
+                            bool isFirst = opt == Model.FruitToppingOptions[0];
+                            <label class="cursor-pointer">
+                                <input type="radio" name="fruitTopping" value="@opt.Label" class="hidden"
+                                       data-price="@opt.PriceAdj"
+                                       @(opt.Label == "ไม่เพิ่มท็อปปิ้ง" ? "checked" : "") />
+                                <span class="option-chip @(opt.Label == "ไม่เพิ่มท็อปปิ้ง" ? "selected" : "")">@opt.Label</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <input type="hidden" name="fruitTopping" value="" />
+            }
+
+            <!-- ===== ขนาด ===== -->
             <div class="mb-5">
                 <div class="text-[0.78rem] font-bold text-[#6F4E37] uppercase tracking-wider mb-1.5">ขนาด</div>
                 <div class="flex flex-wrap gap-1.5">
@@ -137,9 +172,9 @@
                     สินค้าประเภทนี้ไม่มีตัวเลือกเพิ่มเติม
                 </p>
             </div>
-            <!-- ส่งค่า default ให้ Controller ไม่ error -->
             <input type="hidden" name="sweetness" value="" />
             <input type="hidden" name="milkType" value="" />
+            <input type="hidden" name="fruitTopping" value="" />
             <input type="hidden" name="size" value="" />
         }
 
@@ -219,13 +254,16 @@
     });
 
     function calcTotal() {
-        var sizePrice = 0;
-        var milkPrice = 0;
-        var selectedSize = document.querySelector('input[name="size"]:checked');
-        var selectedMilk = document.querySelector('input[name="milkType"]:checked');
-        if (selectedSize) sizePrice = parseFloat(selectedSize.dataset.price) || 0;
-        if (selectedMilk) milkPrice = parseFloat(selectedMilk.dataset.price) || 0;
-        var adj = sizePrice + milkPrice;
+        var sizePrice  = 0;
+        var milkPrice  = 0;
+        var fruitPrice = 0;
+        var selectedSize  = document.querySelector('input[name="size"]:checked');
+        var selectedMilk  = document.querySelector('input[name="milkType"]:checked');
+        var selectedFruit = document.querySelector('input[name="fruitTopping"]:checked');
+        if (selectedSize)  sizePrice  = parseFloat(selectedSize.dataset.price)  || 0;
+        if (selectedMilk)  milkPrice  = parseFloat(selectedMilk.dataset.price)  || 0;
+        if (selectedFruit) fruitPrice = parseFloat(selectedFruit.dataset.price) || 0;
+        var adj = sizePrice + milkPrice + fruitPrice;
         document.getElementById('optionPriceAdj').value = adj;
         var total = (basePrice + adj) * qty;
         document.getElementById('totalDisplay').textContent = total.toLocaleString('th-TH', {minimumFractionDigits:0}) + '฿';

@@ -34,21 +34,23 @@ public class AccountController : Controller
     [HttpPost]
     public IActionResult Login(LoginViewModel data)
     {
-        // normalize input เป็น lowercase ก่อนเปรียบเทียบ เพราะ username ในฐานข้อมูลเก็บเป็น lowercase เสมอ
-        var username = data.Username?.Trim().ToLower() ?? "";
+        var input = data.Identifier?.Trim() ?? "";
 
-        var staff = _db.Staff.FirstOrDefault(s => s.Username == username);
-
-        // ตรวจสอบ: ต้องพบพนักงาน, ยังทำงานอยู่, และรหัสผ่านถูกต้อง
-        if (staff == null || staff.IsActive != (ulong)1)
+        if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(data.Password))
         {
-            ViewBag.ErrorMessage = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+            ViewBag.ErrorMessage = "กรุณากรอก ID / Username และรหัสผ่าน";
             return View(data);
         }
 
-        if (staff.PasswordHash != HashPassword(data.Password))
+        // ตรวจสอบว่าเป็น StaffId (ตัวเลขล้วน) หรือ Username
+        Staff? staff = int.TryParse(input, out int staffId)
+            ? _db.Staff.FirstOrDefault(s => s.StaffId == staffId)
+            : _db.Staff.FirstOrDefault(s => s.Username == input.ToLower());
+
+        // ตรวจสอบ: ต้องพบพนักงาน, ยังทำงานอยู่, และรหัสผ่านถูกต้อง
+        if (staff == null || staff.IsActive != (ulong)1 || staff.PasswordHash != HashPassword(data.Password))
         {
-            ViewBag.ErrorMessage = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+            ViewBag.ErrorMessage = "ID / Username หรือรหัสผ่านไม่ถูกต้อง";
             return View(data);
         }
 

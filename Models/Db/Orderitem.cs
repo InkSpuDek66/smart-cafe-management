@@ -16,4 +16,7 @@ public partial class Orderitem
     public int? Quantity { get; set; }
 
     public decimal? UnitPrice { get; set; }
+
+    // 1 = เมนูฟรีจากการแลก Stamp Card, 0/null = รายการปกติ
+    public ulong? IsStampReward { get; set; }
 }

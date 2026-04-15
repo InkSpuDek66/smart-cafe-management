@@ -27,6 +27,9 @@ public class MenuFormViewModel
     public string?  SeasonStartDate     { get; set; }
     public string?  SeasonEndDate       { get; set; }
 
+    // กลุ่มท็อปปิ้ง: null=ค่าเริ่มต้น, "Soda"=ไม่มีนม+มีผลไม้, "NoMilk"=ไม่มีตัวเลือกนม
+    public string?  ToppingGroup        { get; set; }
+
     // บอกว่าเป็นการแก้ไข (true) หรือสร้างใหม่ (false)
     public bool     IsEdit              { get; set; }
 

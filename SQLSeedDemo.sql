@@ -92,7 +92,11 @@ INSERT INTO MenuItems (MenuItemId, MenuName, MenuDescription, Price, Category, I
 
     -- Seasonal (ตัวอย่าง)
     (17, 'Sakura Latte',      'ลาเต้ซากุระ รสหวานอ่อน กลิ่นดอกซากุระ Limited Edition',
-         95.00, 'Coffee', 1, 'https://images.unsplash.com/photo-1566888596782-c7f41cc184c5?w=400&h=300&fit=crop', 1);
+         95.00, 'Coffee', 1, 'https://images.unsplash.com/photo-1566888596782-c7f41cc184c5?w=400&h=300&fit=crop', 1),
+
+    -- Cookie สำหรับโปรโมชั่น "ยอดครบ 300 ฟรีคุกกี้"
+    (18, 'Chocolate Chip Cookie', 'คุกกี้ช็อกโกแลตชิพ อบสด กรอบนอกนุ่มใน',
+         45.00, 'Bakery', 1, 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400&h=300&fit=crop', 0);
 
 
 -- ============================================================
@@ -175,6 +179,47 @@ INSERT INTO Rewards (RewardId, RewardName, PointsRequired, StockQuantity, ImageU
         'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400&h=300&fit=crop', 1),
     (5, 'Matcha Latte ฟรี (มูลค่า ฿80)',          80, 10,
         'https://images.unsplash.com/photo-1589476993333-f55b84301219?w=400&h=300&fit=crop', 1);
+
+
+-- ============================================================
+-- ToppingGroup — กำหนดกลุ่มท็อปปิ้งสำหรับเมนูที่ไม่ใช่ค่าเริ่มต้น
+-- ============================================================
+-- Strawberry Soda ใช้กลุ่ม Soda: ไม่มีตัวเลือกนม แต่มีท็อปปิ้งผลไม้
+UPDATE MenuItems SET ToppingGroup = 'Soda' WHERE MenuItemId = 10;
+
+
+-- ============================================================
+-- Seasonal EndDate — ให้เมนู Sakura Latte ใช้ได้ถึงปี 2027 (Demo)
+-- ============================================================
+UPDATE MenuItems
+SET SeasonStartDate = '2025-03-01',
+    SeasonEndDate   = '2027-12-31'
+WHERE MenuItemId = 17;
+
+
+-- ============================================================
+-- Promotions — โปรโมชั่นทั้ง 5 ที่ต้องใช้ Demo
+-- ============================================================
+-- PromotionId 1: สะสมแต้ม (ข้อมูลสำหรับ Admin แสดงผล — logic อยู่ใน ApprovePayment)
+-- PromotionId 2: เมนู Seasonal  (ข้อมูลสำหรับ Admin แสดงผล — logic อยู่ใน MenuItems.IsSeasonal)
+-- PromotionId 3: ยอดครบ 300 ฟรีคุกกี้  (RewardValue = MenuItemId 18)
+-- PromotionId 4: Stamp Card 10 ดวง = ฟรี 1 แก้ว (ข้อมูลสำหรับ Admin แสดงผล — logic อยู่ใน StampBalance)
+-- PromotionId 5: Group Check-in ≥5 คน = ลด 1 แก้ว (พนักงาน Manual กดอนุมัติ — RewardValue = discount amount)
+INSERT INTO Promotions (PromotionId, PromotionName, ConditionType, ConditionValue, RewardType, RewardValue, IsActive, StartDate, EndDate) VALUES
+    (1, 'สะสมแต้ม 10 บาท = 1 แต้ม',
+        NULL,           NULL,   'PointEarn',  '1',    1, NULL, NULL),
+
+    (2, 'เมนู Seasonal ตามเทศกาล',
+        'Seasonal',     NULL,   'SeasonalMenu','',    1, '2025-03-01', '2027-12-31'),
+
+    (3, 'ยอดครบ 300 บาท รับ Chocolate Chip Cookie ฟรี 1 ชิ้น',
+        'MinAmount',    '300',  'FreeItem',   '18',   1, NULL, NULL),
+
+    (4, 'Stamp Card — ครบ 10 ดวง รับเครื่องดื่มฟรี 1 แก้ว',
+        'StampCount',   '10',   'FreeDrink',  '1',    1, NULL, NULL),
+
+    (5, 'Group Check-in ≥5 คน รับส่วนลด 1 แก้ว (ประมาณ 75 บาท)',
+        'GroupCheckin', '5',    'Discount',   '75',   1, NULL, NULL);
 
 
 -- ============================================================

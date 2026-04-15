@@ -34,6 +34,8 @@ public class PosOrderItemRow
     public int?   Quantity      { get; set; }
     public int?   StatusId      { get; set; }
     public string? StatusName   { get; set; }
+    public string? Category    { get; set; }               // Coffee / Non-Coffee / Food / etc.
+    public decimal? UnitPrice  { get; set; }
     public List<string> Options { get; set; } = new();   // "OptionName: OptionValue"
     public List<RecipeRow> Recipes { get; set; } = new(); // สูตรวัตถุดิบ (ใช้ใน KDS)
 }
