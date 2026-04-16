@@ -1,7 +1,7 @@
 # Smart Cafe Management System: Design Blueprint (POS & Mobile Web App)
 
-**เวอร์ชัน:** v8.1
-**อัปเดตล่าสุด:** 16/04/2026
+**เวอร์ชัน:** v8.2
+**อัปเดตล่าสุด:** 17/04/2026
 
 ---
 
@@ -284,6 +284,118 @@ wwwroot/uploads/menus/
 
 ---
 
+### 3.3 Routes ทั้งหมดในระบบ (MVC Endpoints)
+
+ระบบใช้รูปแบบ `/{Controller}/{Action}/{id?}` ตาม ASP.NET Core MVC ไม่ได้ใช้ REST API style ตารางด้านล่างสะท้อน Action methods ที่ประกาศไว้จริงในแต่ละ Controller ณ วันที่อัปเดต
+
+#### CustomerController — ลูกค้า (Mobile Web App)
+
+| Method | URL | หน้าที่ |
+| :--- | :--- | :--- |
+| GET | `/Customer/Menu?table=T01&category={name}` | หน้าเมนู กรองตาม Category ได้ |
+| GET | `/Customer/Detail/{id}?table=T01` | รายละเอียดเมนูพร้อม Options |
+| GET | `/Customer/Cart` | ตะกร้าสินค้า (เก็บใน Session) |
+| POST | `/Customer/AddToCart` | เพิ่มสินค้าในตะกร้า (sweetness, milkType, size, optionPriceAdjustment) |
+| POST | `/Customer/RemoveFromCart` | ลบสินค้าจากตะกร้า (index) |
+| POST | `/Customer/UpdateCartQty` | แก้จำนวนในตะกร้า (index, quantity) |
+| GET | `/Customer/Checkout` | หน้า Checkout ระบุ Guest/Member |
+| POST | `/Customer/PlaceOrder` | สร้างออเดอร์ + Reserve Stock (guestName, memberPhone, stampFreeMenuItemId) |
+| GET | `/Customer/Payment/{orderId}` | หน้าชำระเงิน + QR PromptPay |
+| POST | `/Customer/UploadSlip/{orderId}` | อัปโหลดสลิป (IFormFile) |
+| POST | `/Customer/RedeemPoints` | แลกแต้ม (orderId, points) |
+| POST | `/Customer/RedeemStamp` | ใช้แสตมป์ (orderId) |
+| POST | `/Customer/CancelOrder/{id}` | ยกเลิกออเดอร์ |
+| GET | `/Customer/Tracking?orderId={id}` | ติดตามสถานะออเดอร์ |
+| GET | `/Customer/TrackByTable?table=T01` | ติดตามด้วยเบอร์โต๊ะ |
+| GET | `/Customer/OrderQueue` | คิวออเดอร์ของลูกค้า (Status 2-5) |
+| GET | `/Customer/MyOrders` | ประวัติออเดอร์ (Member) |
+| GET | `/Customer/Rewards` | แคตาล็อกของรางวัล |
+| GET/POST | `/Customer/RegisterMobile?table=` | สมัครสมาชิกบนมือถือ |
+| GET/POST | `/Customer/EditProfile` | แก้ไขโปรไฟล์ |
+| GET/POST | `/Customer/ChangePhone` | เปลี่ยนเบอร์โทร |
+| GET/POST | `/Customer/MemberLogout` | Logout สมาชิก (รองรับทั้ง AJAX JSON และ Redirect) |
+| GET | `/Customer/MemberLookup?phone={phone}` | **(ปิดใช้งานแล้ว)** คืน JSON "endpoint disabled" |
+
+#### AdminController — Manager / Finance / Owner
+
+| Method | URL | หน้าที่ |
+| :--- | :--- | :--- |
+| GET | `/Admin` หรือ `/Admin/Index` | Dashboard |
+| GET | `/Admin/MenuList` | รายการเมนูทั้งหมด |
+| GET/POST | `/Admin/MenuCreate` | สร้างเมนูใหม่ (POST รับ MenuFormViewModel + imageFile) |
+| GET/POST | `/Admin/MenuEdit/{id}` | แก้ไขเมนู (GET แสดงฟอร์ม, POST บันทึก) |
+| POST | `/Admin/MenuDelete/{id}` | ลบเมนู |
+| POST | `/Admin/ToggleMenuAvailability/{id}` | เปิด/ปิดเมนู |
+| GET | `/Admin/Orders?status={id}` | รายการออเดอร์ |
+| POST | `/Admin/UpdateOrderStatus` | อัปเดตสถานะออเดอร์ |
+| GET | `/Admin/Payments` | รายการสลิปรอ Verify |
+| POST | `/Admin/ApprovePayment/{id}` | Approve สลิป |
+| POST | `/Admin/RejectPayment/{id}` | Reject สลิป (rejectReason) |
+| GET | `/Admin/Inventory` | จัดการสต็อก |
+| POST | `/Admin/Restock` | บันทึก Restock (ingredientId, quantity) |
+| POST | `/Admin/AddIngredient` | เพิ่มวัตถุดิบใหม่ |
+| GET | `/Admin/Recipes` | จัดการสูตรเครื่องดื่ม |
+| POST | `/Admin/AddRecipe` | เพิ่มสูตร |
+| POST | `/Admin/DeleteRecipe` | ลบสูตร |
+| GET | `/Admin/Promotions` | จัดการโปรโมชั่น |
+| POST | `/Admin/TogglePromotion` | เปิด/ปิดโปรโมชั่น |
+| POST | `/Admin/AddPromotion` | เพิ่มโปรโมชั่น |
+| POST | `/Admin/EditPromotion` | แก้ไขโปรโมชั่น |
+| POST | `/Admin/DeletePromotion` | ลบโปรโมชั่น |
+| GET | `/Admin/Reports?from=&to=` | รายงานยอดขาย |
+| GET | `/Admin/Finance?date=` | Finance Reconciliation |
+| GET | `/Admin/Tables` | จัดการโต๊ะ |
+| POST | `/Admin/AddTable` | เพิ่มโต๊ะใหม่ |
+| POST | `/Admin/DeleteTable` | ลบโต๊ะ |
+| POST | `/Admin/ToggleTableStatus` | เปิด/ปิดโต๊ะ |
+| GET | `/Admin/QrPrint?tableId={id}` | QR Code แบบ Print-ready |
+| GET | `/Admin/Setup` | ตั้งค่าระบบ |
+| GET | `/Admin/Shifts` | **ซ่อน UI ชั่วคราว** redirect กลับ Dashboard ทันที |
+| POST | `/Admin/AddShift` | Action ยังใช้งานได้แต่ไม่มี UI เปิดอยู่ |
+| POST | `/Admin/ClockOut` | เช่นเดียวกับ AddShift |
+| POST | `/Admin/DeleteShift` | เช่นเดียวกับ AddShift |
+
+#### PosController — Barista / Cashier (POS Tablet + KDS)
+
+| Method | URL | หน้าที่ |
+| :--- | :--- | :--- |
+| GET | `/Pos/Queue` | POS Queue (Split View: Unpaid/Paid) + ตรวจ ReservedUntil หมดอายุใน-process |
+| GET | `/Pos/Kds` | Kitchen Display System สำหรับ Barista |
+| GET/POST | `/Pos/Wastage` | บันทึก Wastage (ingredientId, quantity, notes) |
+| POST | `/Pos/MarkItemDone/{itemId}` | Barista กด Done รายการ |
+| POST | `/Pos/MarkOrderPreparing/{orderId}` | เปลี่ยนสถานะ Paid → Preparing |
+| POST | `/Pos/CallCustomer/{orderId}` | แจ้งเตือนลูกค้าให้มารับ |
+| POST | `/Pos/MarkOrderCompleted/{orderId}` | กด Served → OrderStatusId=5 |
+| POST | `/Pos/ApprovePaymentAtPos/{id}` | Approve สลิปที่ POS |
+| POST | `/Pos/RejectPaymentAtPos/{id}` | Reject สลิปที่ POS |
+| POST | `/Pos/ApproveGroupCheckin/{id}` | อนุมัติ Group Check-in ด้วยตา |
+| POST | `/Pos/RedeemPoints` | พนักงานแลกแต้มให้สมาชิก |
+| POST | `/Pos/RedeemStamp` | พนักงานใช้แสตมป์ให้สมาชิก |
+| POST | `/Pos/IssueReward` | มอบของรางวัลให้สมาชิก (memberId, rewardId) |
+| GET | `/Pos/GetRewards` | คืน JSON รายการของรางวัลที่แลกได้ |
+
+#### AccountController — Authentication และ Member
+
+| Method | URL | หน้าที่ |
+| :--- | :--- | :--- |
+| GET/POST | `/Account/Login` | Login พนักงาน (SHA-256 hash) |
+| GET | `/Account/Logout` | ล้าง Session |
+| GET/POST | `/Account/AddStaff` | เพิ่มพนักงาน (Manager/Owner เท่านั้น) |
+| GET | `/Account/MemberList` | รายชื่อสมาชิก |
+| GET/POST | `/Account/Register` | สมัครสมาชิก (ปฏิเสธถ้าเป็น Staff ที่ล็อกอินอยู่) |
+| GET/POST | `/Account/UpdateMember` | แก้ไขข้อมูลสมาชิก |
+
+#### HomeController / MenuController / PublicController
+
+| Method | URL | หน้าที่ |
+| :--- | :--- | :--- |
+| GET | `/Home/Index` หรือ `/` | Landing Page (ไม่ต้อง Login) |
+| GET | `/Home/Dashboard` | Dashboard ภาพรวม (ต้อง Login) |
+| GET | `/Menu/Index?category={name}` | เมนูแบบไม่ต้องเลือกโต๊ะ (browse อย่างเดียว) |
+| GET | `/Public/Queue` | จอแสดงคิว TV (ไม่ต้อง Login) |
+
+---
+
 ## 4. การออกแบบ UX/UI (Wireframe Specifications)
 
 ### ส่วนที่ 1: Customer Side (Mobile Web App / PWA)
@@ -493,8 +605,10 @@ KPI widgets จาก `DashboardViewModel` (แสดงข้อมูลขอ
 | `IsAvailable` | BIT | 1=มีขาย, 0=ปิดชั่วคราว |
 | `ImageUrl` | NVARCHAR(255) | URL รูปภาพเมนู |
 | `IsSeasonal` | BIT | 1=เมนูตามฤดูกาล, 0=เมนูปกติ |
-| `SeasonStartDate` | DATE | วันเริ่มต้นเมนู Seasonal (NULL ได้) |
-| `SeasonEndDate` | DATE | วันสิ้นสุดเมนู Seasonal (NULL ได้) |
+| `SeasonStartDate` | DATETIME | วันเริ่มต้นเมนู Seasonal (NULL ได้) |
+| `SeasonEndDate` | DATETIME | วันสิ้นสุดเมนู Seasonal (NULL ได้) |
+
+> **หมายเหตุ:** `Menuitem.cs` (C# model) มี property `ToppingGroup` (NVARCHAR(50)) สำหรับจัดกลุ่มท็อปปิ้งของเมนู แต่คอลัมน์นี้ **ยังไม่ถูกเพิ่มเข้า schema จริง** ในฐานข้อมูล หากจะใช้ต้องรัน `ALTER TABLE menuitems ADD COLUMN ToppingGroup NVARCHAR(50) NULL;` ก่อน
 
 #### Ingredients
 | Column | Type | Description |
@@ -563,6 +677,7 @@ KPI widgets จาก `DashboardViewModel` (แสดงข้อมูลขอ
 | `OrderItemStatusId` | INT FK -> OrderItemStatus | สถานะของรายการนี้ |
 | `Quantity` | INT | จำนวนที่สั่ง |
 | `UnitPrice` | DECIMAL(10,2) | ราคา ณ เวลาที่สั่ง (Price Snapshot) |
+| `IsStampReward` | TINYINT(1) | 1=เมนูฟรีจากการแลก Stamp Card, 0/NULL=รายการปกติ |
 
 #### OrderItemOptions
 | Column | Type | Description |
@@ -597,6 +712,8 @@ KPI widgets จาก `DashboardViewModel` (แสดงข้อมูลขอ
 | `QuantityChange` | FLOAT | ค่าลบ=ลดสต็อก, ค่าบวก=เพิ่มสต็อก |
 | `CreatedAt` | DATETIME | เวลาที่บันทึก |
 
+> **หมายเหตุ:** `Inventorylog.cs` (C# model) มี property `Notes` (NVARCHAR(500)) สำหรับบันทึกหมายเหตุหรือสาเหตุการสูญเสีย แต่คอลัมน์นี้ **ยังไม่ถูกเพิ่มเข้า schema จริง** ในฐานข้อมูล หากจะใช้ต้องรัน `ALTER TABLE inventorylogs ADD COLUMN Notes NVARCHAR(500) NULL;` ก่อน
+
 #### PointTransactions
 | Column | Type | Description |
 | :--- | :--- | :--- |
@@ -625,13 +742,15 @@ KPI widgets จาก `DashboardViewModel` (แสดงข้อมูลขอ
 ```
 เมื่อ Confirm Order:
   -> เพิ่ม ingredients.ReservedQty += QuantityRequired (จาก recipes)
-  -> บันทึก orders.ReservedUntil = NOW() + 5 นาที
-
-Background Job (ทุก 1 นาที):
-  -> ค้นหา orders ที่ OrderStatusId = 1 และ ReservedUntil < NOW()
-  -> คืน ingredients.ReservedQty
-  -> อัปเดต orders.OrderStatusId = 6 (Cancelled)
+  -> บันทึก orders.ReservedUntil = NOW() + 15 นาที
 ```
+
+**การคืนสต็อกเมื่อหมดเวลา (Cleanup):**
+- ตั้งใจไว้เดิมคือ Background Job รันทุก 1 นาที (Hangfire)
+- ในรุ่น Demo ใช้แบบ **In-process check** แทน ทริกเกอร์เมื่อพนักงานเปิดหน้า `/Pos/Queue`
+  - สแกน orders ที่ `OrderStatusId = 1` และ `ReservedUntil < NOW()`
+  - คืน `ingredients.ReservedQty` และอัปเดต `orders.OrderStatusId = 6` (Cancelled)
+- เหตุผลที่ไม่ใช้ Background Job จริง: อยู่นอก scope นักศึกษา (ต้องติดตั้ง Hangfire + Storage) และ POS Queue มักจะเปิดตลอดวันอยู่แล้ว จึงเรียก cleanup ได้บ่อยพอ
 
 ### 6.2 Ghost Order Prevention
 ```
@@ -704,16 +823,17 @@ orders เปลี่ยนเป็น Paid ไม่ได้ ถ้า:
 ### 7.3 Stamp Logic
 ```
 เมื่อ OrderStatusId = 2 (Paid):
-  -> นับ OrderItems ที่ MenuItems.Category = 'Coffee' หรือ 'Non-Coffee'
-  -> StampsEarned = จำนวน Beverage ที่สั่ง
-  -> อัปเดต Members.StampBalance += StampsEarned
-  -> บันทึก PointTransactions (TypeId=3 StampEarn, Amount=StampsEarned)
+  -> StampsEarned = 1 (ให้ 1 แสตมป์ต่อ 1 ออเดอร์เสมอ)
+  -> อัปเดต Members.StampBalance += 1
+  -> บันทึก PointTransactions (TypeId=3 StampEarn, Amount=1)
 
 เมื่อ Members.StampBalance >= 10 และพนักงานกด [Use Free Drink Stamp]:
-  -> สร้าง OrderItems ใหม่ (ราคา 0)
+  -> สร้าง OrderItems ใหม่ (UnitPrice = 0, IsStampReward = 1)
   -> อัปเดต Members.StampBalance -= 10
   -> บันทึก PointTransactions (TypeId=4 StampRedeem, Amount=-10, CreatedBy=StaffId)
 ```
+
+> **หมายเหตุการออกแบบ:** เดิมวางแผนไว้ว่าจะนับเฉพาะ OrderItems ที่ `MenuItems.Category` เป็น Coffee หรือ Non-Coffee แต่ในรุ่น Demo ใช้ +1 ต่อออเดอร์เพื่อความเรียบง่าย หากต้องการแยกประเภทในอนาคต ปรับที่ `ApprovePayment()` และ `ApprovePaymentAtPos()` ได้
 
 ### 7.4 Group Check-in Logic
 ```
@@ -754,7 +874,7 @@ Background Job (ทุกวัน เวลา 00:00):
 | Database Tool | Azure Data Studio |
 | Real-time | SignalR (WebSocket) — Hub URL: `/hubs/cafe` (ลงทะเบียนใน `Program.cs`), Group-based messaging: Staff join group `"staff"`, Customer join group `"order-{orderId}"` |
 | Background Jobs | In-process (ตรวจสอบ `ReservedUntil` ใน Controller — ไม่ใช้ Hangfire) |
-| Authentication | Session-based (`HttpContext.Session`) — เก็บ `StaffId`, `Username`, `StaffRoleId`, `FullName`, `LoginTime` หลัง Login สำเร็จ, Timeout 20 นาที, Password hashed ด้วย SHA-256 |
+| Authentication | Session-based (`HttpContext.Session`) — เก็บ `StaffId`, `Username`, `StaffRoleId`, `FullName`, `LoginTime` หลัง Login สำเร็จ, ใช้ Session IdleTimeout ค่า default ของ ASP.NET Core (20 นาที), Password hashed ด้วย SHA-256 |
 | File Storage | Local (`wwwroot/uploads/slips/` และ `wwwroot/uploads/menus/`) |
 
 ### Frontend
@@ -897,7 +1017,7 @@ flowchart LR
     B -- "ใช่" --> C["Redirect ไปหน้า\nOrder Status"]
     B -- "ไม่ใช่" --> D["แสดงหน้า Digital Menu"]
     D --> E["เลือกเมนู + Options"]
-    E --> F["กด Confirm Order\nReserve Stock 5 นาที"]
+    E --> F["กด Confirm Order\nReserve Stock 15 นาที"]
     F --> G{"สะสมแต้ม?"}
     G -- "ไม่" --> H["กรอกชื่อเล่น (Guest)\norders.GuestName"]
     G -- "ใช่" --> I["กรอกเบอร์โทร (Member)\norders.MemberId"]
@@ -1082,6 +1202,289 @@ sequenceDiagram
     HUB-->>C: Real-time OrderStatus=Ready
     HUB-->>POS: Public Screen รับ event อัปเดตจอแสดงคิว
     CTRL-->>POS: JSON ok
+```
+
+---
+
+### 9.5 Entity Relationship Diagram (ERD)
+
+ERD แสดงโครงสร้างตารางทั้งหมดใน `csi402db` พร้อมความสัมพันธ์ FK ในแบบ Crow's foot notation ช่วยให้เห็นภาพว่าแต่ละ Transaction Table เชื่อมกับ Reference Table และ Core Table อย่างไร Entity ชื่อ PascalCase ตาม C# Model และ Attribute แสดงเฉพาะ PK/FK และคอลัมน์หลัก (ดูรายละเอียดครบในหัวข้อ 5. Database Schema)
+
+```mermaid
+erDiagram
+    OrderStatus ||--o{ Orders : "กำหนดสถานะ"
+    OrderItemStatus ||--o{ OrderItems : "กำหนดสถานะ"
+    InventoryReasonType ||--o{ InventoryLogs : "ระบุเหตุผล"
+    StaffRole ||--o{ Staff : "กำหนด Role"
+    PaymentMethod ||--o{ Payments : "ช่องทาง"
+    PaymentStatus ||--o{ Payments : "สถานะ"
+    PointTransactionType ||--o{ PointTransactions : "ประเภท"
+
+    Tables ||--o{ Orders : "ประจำโต๊ะ"
+    Members ||--o{ Orders : "เป็นเจ้าของ"
+    Members ||--o{ PointTransactions : "สะสม"
+    MenuItems ||--o{ OrderItems : "ถูกสั่ง"
+    MenuItems ||--|{ Recipes : "มีสูตร"
+    Ingredients ||--|{ Recipes : "เป็นส่วนประกอบ"
+    Ingredients ||--o{ InventoryLogs : "ถูกบันทึก"
+
+    Orders ||--|{ OrderItems : "ประกอบด้วย"
+    Orders ||--o{ Payments : "ชำระผ่าน"
+    Orders ||--o{ InventoryLogs : "อ้างอิงการขาย"
+    Orders ||--o{ PointTransactions : "อ้างอิง"
+    OrderItems ||--o{ OrderItemOptions : "มี Options"
+
+    Staff ||--o{ Payments : "Verify"
+    Staff ||--o{ InventoryLogs : "บันทึก"
+    Staff ||--o{ PointTransactions : "ดำเนินการ"
+    Staff ||--o{ StaffShifts : "เข้ากะ"
+
+    OrderStatus {
+        int OrderStatusId PK
+        string StatusName
+    }
+    OrderItemStatus {
+        int OrderItemStatusId PK
+        string StatusName
+    }
+    InventoryReasonType {
+        int ReasonTypeId PK
+        string ReasonName
+    }
+    StaffRole {
+        int StaffRoleId PK
+        string RoleName
+    }
+    PaymentMethod {
+        int PaymentMethodId PK
+        string MethodName
+    }
+    PaymentStatus {
+        int PaymentStatusId PK
+        string StatusName
+    }
+    PointTransactionType {
+        int TypeId PK
+        string TypeName
+    }
+    Tables {
+        int TableId PK
+        string TableNumber
+        string QrCodeUrl
+        bool IsActive
+    }
+    Members {
+        int MemberId PK
+        string Phone
+        string FirstName
+        string LastName
+        date BirthDate
+        int Points
+        int StampBalance
+    }
+    Staff {
+        int StaffId PK
+        int StaffRoleId FK
+        string Username
+        string PasswordHash
+        bool IsActive
+    }
+    MenuItems {
+        int MenuItemId PK
+        string MenuName
+        decimal Price
+        string Category
+        bool IsAvailable
+        bool IsSeasonal
+    }
+    Ingredients {
+        int IngredientId PK
+        string IngredientName
+        float StockQuantity
+        float ReservedQty
+        float ReorderLevel
+        decimal CostPerUnit
+    }
+    Recipes {
+        int RecipeId PK
+        int MenuItemId FK
+        int IngredientId FK
+        float QuantityRequired
+    }
+    Rewards {
+        int RewardId PK
+        string RewardName
+        int PointsRequired
+        int StockQuantity
+    }
+    Promotions {
+        int PromotionId PK
+        string PromotionName
+        string ConditionType
+        string RewardType
+        bool IsActive
+    }
+    Orders {
+        int OrderId PK
+        int MemberId FK
+        int TableId FK
+        int OrderStatusId FK
+        string QueueNumber
+        decimal NetAmount
+        datetime ReservedUntil
+    }
+    OrderItems {
+        int OrderItemId PK
+        int OrderId FK
+        int MenuItemId FK
+        int OrderItemStatusId FK
+        int Quantity
+        decimal UnitPrice
+        bool IsStampReward
+    }
+    OrderItemOptions {
+        int OrderItemOptionId PK
+        int OrderItemId FK
+        string OptionName
+        string OptionValue
+        decimal PriceAdjustment
+    }
+    Payments {
+        int PaymentId PK
+        int OrderId FK
+        int PaymentMethodId FK
+        int PaymentStatusId FK
+        decimal Amount
+        string SlipUrl
+        int VerifiedBy FK
+    }
+    InventoryLogs {
+        int LogId PK
+        int IngredientId FK
+        int ReasonTypeId FK
+        int RefOrderId FK
+        int CreatedBy FK
+        float QuantityChange
+    }
+    PointTransactions {
+        int TransId PK
+        int MemberId FK
+        int TypeId FK
+        int Amount
+        int RefOrderId FK
+        int CreatedBy FK
+    }
+    StaffShifts {
+        int ShiftId PK
+        int StaffId FK
+        datetime ShiftStart
+        datetime ShiftEnd
+    }
+```
+
+---
+
+### 9.6 State Diagram — Order Lifecycle
+
+แผนภาพสถานะของ `orders.OrderStatusId` ตั้งแต่สร้างออเดอร์จนเสร็จสิ้น แสดงทั้งเส้นทางหลัก (Happy Path) และทางเลี่ยง เช่น Reject สลิป, Cancel, และ Timeout 15 นาที ที่ทำให้ออเดอร์ย้อนกลับสู่ Waiting_Payment หรือจบที่ Cancelled
+
+```mermaid
+stateDiagram-v2
+    state "1 Waiting_Payment" as S1
+    state "2 Paid" as S2
+    state "3 Preparing" as S3
+    state "4 Ready" as S4
+    state "5 Completed" as S5
+    state "6 Cancelled" as S6
+
+    [*] --> S1 : PlaceOrder (Reserve 15 นาที)
+    S1 --> S2 : ApprovePayment / ApprovePaymentAtPos
+    S1 --> S1 : RejectPayment (ลูกค้าอัปโหลดสลิปใหม่)
+    S1 --> S6 : CancelOrder / ReservedUntil หมดอายุ
+    S2 --> S3 : MarkOrderPreparing (auto หลัง Paid)
+    S3 --> S4 : ทุก OrderItem เป็น Done (OrderItemStatusId=3)
+    S4 --> S5 : MarkOrderCompleted (พนักงานกด Served)
+    S5 --> [*]
+    S6 --> [*]
+```
+
+---
+
+### 9.7 Use Case Diagram
+
+แสดง Actor ทั้งเจ็ดบทบาทและ Use Case หลักภายใน System Boundary ช่วยให้เห็นภาพขอบเขตสิทธิ์ของแต่ละ Role ก่อนลงรายละเอียดในตาราง Permission Matrix (หัวข้อ 2) เนื่องจาก Mermaid ไม่รองรับ Use Case Diagram โดยตรง ผมใช้ flowchart เลียนแบบ โดยใช้ node วงกลมแทน Actor และ node Stadium แทน Use Case
+
+```mermaid
+flowchart LR
+    G(("Guest"))
+    M(("Member"))
+    B(("Barista"))
+    C(("Cashier"))
+    SM(("Store Manager"))
+    F(("Finance"))
+    O(("Owner"))
+
+    subgraph SYS["Smart Cafe Management System"]
+        UC1(["สแกน QR และสั่งอาหาร"])
+        UC2(["อัปโหลดสลิปชำระเงิน"])
+        UC3(["ติดตามสถานะออเดอร์"])
+        UC4(["สมัครสมาชิกและแก้ไขโปรไฟล์"])
+        UC5(["สะสมแต้มและดูประวัติ"])
+        UC6(["แลกของรางวัลที่เคาน์เตอร์"])
+        UC7(["ดูออเดอร์และสูตรบน KDS"])
+        UC8(["กด Done รายการเครื่องดื่ม"])
+        UC9(["บันทึก Wastage"])
+        UC10(["Verify สลิปที่ POS"])
+        UC11(["จัดการคิวและ Served"])
+        UC12(["อนุมัติ Group Check-in"])
+        UC13(["จัดการเมนู Seasonal"])
+        UC14(["จัดการสต็อกและ Restock"])
+        UC15(["จัดการ Promotion"])
+        UC16(["Generate QR Code ของโต๊ะ"])
+        UC17(["Reconciliation รายวัน"])
+        UC18(["ดู Dashboard และรายงาน"])
+        UC19(["เพิ่มและลบพนักงาน"])
+        UC20(["ตั้งค่าระบบ"])
+    end
+
+    G --> UC1
+    G --> UC2
+    G --> UC3
+
+    M --> UC1
+    M --> UC2
+    M --> UC3
+    M --> UC4
+    M --> UC5
+    M --> UC6
+
+    B --> UC7
+    B --> UC8
+    B --> UC9
+    B --> UC11
+
+    C --> UC10
+    C --> UC11
+    C --> UC12
+    C --> UC6
+
+    SM --> UC13
+    SM --> UC14
+    SM --> UC16
+    SM --> UC18
+    SM --> UC19
+
+    F --> UC10
+    F --> UC17
+    F --> UC18
+
+    O --> UC13
+    O --> UC14
+    O --> UC15
+    O --> UC17
+    O --> UC18
+    O --> UC19
+    O --> UC20
 ```
 
 ---
