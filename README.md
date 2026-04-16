@@ -1,14 +1,14 @@
 # Smart Cafe Management System: Design Blueprint (POS & Mobile Web App)
 
-**เวอร์ชัน:** v8.0
-**อัปเดตล่าสุด:** 15/04/2026
+**เวอร์ชัน:** v8.1
+**อัปเดตล่าสุด:** 16/04/2026
 
 ---
 
 ## บริบทโปรเจกต์ (Project Context)
 
 - **ประเภทโปรเจกต์:** งานนักศึกษาชั้นปีที่ 3 สาขาวิทยาการคอมพิวเตอร์และนวัตกรรมการพัฒนาซอฟต์แวร์
-- **กำหนดส่ง:** 5 เมษายน 2026
+- **กำหนดส่ง:** 19 เมษายน 2026 ภายใน 23:59 น. (นำเสนอ 20-21 เมษายน 2026)
 - **ขอบเขต:** Demo ได้ใช้งานได้จริงในระดับ Prototype ไม่ต้องเชื่อมต่อบริการภายนอกที่มีค่าใช้จ่าย
 
 ### ฟีเจอร์ที่อยู่ใน Demo Mode (ไม่เชื่อมระบบจริง)
@@ -154,8 +154,8 @@ wwwroot/uploads/menus/
 7. [Promotions and Loyalty System](#7-promotions-and-loyalty-system)
 8. [Tech Stack](#8-tech-stack)
 9. [System Architecture and Diagrams](#9-system-architecture-and-diagrams)
-10. [Gap Analysis and Recommendations](#10-gap-analysis-and-recommendations)
-11. [Next Steps for Developer](#11-next-steps-for-developer)
+10. [Future Enhancements](#10-future-enhancements)
+11. [บันทึกการพัฒนา](#11-บันทึกการพัฒนา)
 
 ---
 
@@ -207,11 +207,21 @@ wwwroot/uploads/menus/
 
 ## 3. Workflow การทำงานหลัก (Core Workflows)
 
+### หน้าหลักและ URL เริ่มต้น
+
+| Controller | URL | หน้าที่ |
+| :--- | :--- | :--- |
+| `HomeController.Index` | `/` หรือ `/Home/Index` | Landing Page — แสดงสถิติรวม (Members, MenuItems, Staff) ก่อน Login |
+| `HomeController.Dashboard` | `/Home/Dashboard` | Dashboard ภาพรวมสำหรับ Staff ที่ Login แล้ว (Redirect ไป Login ถ้ายังไม่ Login) |
+| `MenuController.Index` | `/Menu/Index?category=Coffee` | หน้าเมนูสำหรับดูภาพรวม กรองตาม Category ได้ (ไม่ต้อง Login) |
+
+---
+
 ### 3.1 Flow การสั่งอาหารและชำระเงิน (Guest and Member Flow)
 
 **Step 1: Scan and Identify**
-- ลูกค้าสแกน QR Code ที่โต๊ะ (URL มี Parameter `?table_no=5`)
-- System ตรวจสอบ `TableNumber` จากตาราง `tables` และแสดงหน้า Digital Menu
+- ลูกค้าสแกน QR Code ที่โต๊ะ (URL มี Parameter `?table=T01`)
+- System ตรวจสอบ `TableNumber` จากตาราง `tables` และแสดงหน้า Digital Menu (`/Customer/Menu?table=T01`)
 
 **Step 2: Selection and Stock Reservation**
 - เลือกเมนู เลือก Option (ความหวาน, นม) บันทึกลง `orderitemoptions`
@@ -270,6 +280,7 @@ wwwroot/uploads/menus/
 
 **6. Staff and Shift Management (Owner / Manager)**
 - เจ้าของร้านและ Manager จัดการข้อมูลพนักงาน กะการทำงาน และสิทธิ์การเข้าถึง
+- **หมายเหตุ:** หน้า Shift Management (`/Admin/Shifts`) สร้างเสร็จแล้วแต่ถูกซ่อนชั่วคราว เนื่องจากเวลาไม่เพียงพอในการขัดเกลาให้เหมาะสมก่อนส่งงาน
 
 ---
 
@@ -350,15 +361,23 @@ wwwroot/uploads/menus/
 - เลือกวัตถุดิบ/เมนู ระบุปริมาณ เลือกเหตุผล (ชงผิด, หก, หมดอายุ)
 - บันทึก `inventorylogs` (ReasonTypeId=2=Wastage)
 
+**2.6 Staff Login / Logout**
+- หน้า Login (`/Account/Login`): พนักงานทุก Role ใช้ `Username` + Password เข้าระบบ
+- ระบบ Session-based: บันทึก `StaffId` และ `StaffRoleId` ใน `HttpContext.Session`
+- หน้า Logout (`/Account/Logout`): ล้าง Session และ Redirect ไปหน้า Login
+
 ---
 
 ### ส่วนที่ 3: Web Admin (Manager, Finance, Owner)
 
 **3.1 Dashboard (Manager / Owner)**
-- Graph: ยอดขายรายชั่วโมงของวันนี้
-- Top 5 Best Sellers
-- Stock Alerts (วัตถุดิบที่ `StockQuantity < ReorderLevel`)
-- Wastage Cost Summary (ต้นทุนของเสียแยกออกมาให้ตรวจสอบ)
+
+KPI widgets จาก `DashboardViewModel` (แสดงข้อมูลของวันปัจจุบัน):
+- ยอดออเดอร์วันนี้ (`TodayOrderCount`) และยอดขายรวมวันนี้ (`TodayRevenue`) — นับเฉพาะ OrderStatus 2-5
+- จำนวนสมาชิก (`TotalMembers`), เมนูที่เปิดขาย (`ActiveMenuItems` / `TotalMenuItems`), พนักงานที่ Active (`TotalStaff`)
+- Top 5 Best Sellers (`Top5BestSellers`) — ชื่อเมนู, จำนวนที่ขายได้, รายรับ
+- ต้นทุน Wastage วันนี้ (`TodayWastageCost`)
+- Stock Alerts (`LowStockAlerts`) — วัตถุดิบที่ `StockQuantity < ReorderLevel` พร้อมชื่อและหน่วย
 
 **3.2 Finance Reconciliation (Finance / Owner)**
 - Table: Order ID | เวลา | โต๊ะ | ยอดเงิน | รูปสลิป (คลิก Zoom) | Status | Verify By
@@ -378,19 +397,26 @@ wwwroot/uploads/menus/
 
 **3.5 Staff Management (Manager / Owner)**
 - จัดการข้อมูลพนักงาน (`staff`) และ Role (`staffrole`)
-- จัดการกะพนักงาน (`StaffShifts`)
 - Owner เท่านั้นที่สามารถเพิ่ม/ลบ Manager และ Finance ได้
+- จัดการกะพนักงาน (`StaffShifts`) — **UI ถูกซ่อนชั่วคราว** (`/Admin/Shifts` redirect กลับ Dashboard) เนื่องจากเวลาไม่เพียงพอในการขัดเกลาก่อนส่งงาน
 
-**3.6 Promotions Management (Owner)**
+**3.6 Account Management (Owner / Manager)**
+- พนักงาน Login/Logout ผ่าน `AccountController` (`/Account/Login`, `/Account/Logout`)
+- เพิ่มพนักงานใหม่: `/Account/AddStaff` — Owner/Manager กรอกข้อมูลพนักงาน กำหนด Role
+- ดูรายชื่อสมาชิกทั้งหมด: `/Account/MemberList` — แสดง Member พร้อม Points และ StampBalance
+- แก้ไขข้อมูลสมาชิก: `/Account/UpdateMember`
+- `/Account/Register` — สมัครสมาชิกด้วยตัวเอง (เฉพาะลูกค้าเท่านั้น Staff ห้ามใช้ endpoint นี้ ระบบตรวจ `IsLoggedIn()` และ Redirect หากเป็น Staff)
+
+**3.8 Promotions Management (Owner)**
 - จัดการโปรโมชั่นทั้งหมดผ่านตาราง `Promotions`
 - กำหนดเงื่อนไข เปิด/ปิดโปรโมชั่นได้แบบ Dynamic
 - ดูสถิติการใช้งานโปรโมชั่นแต่ละชนิด
 
-**3.7 QR Code Management (Manager / Owner)**
+**3.9 QR Code Management (Manager / Owner)**
 - เลือกโต๊ะที่ต้องการ -> กด Generate QR Code ใหม่ -> ระบบอัปเดต `tables.QrCodeUrl`
 - หน้า Preview QR Code แบบ Print-ready ขนาด A4 พร้อมหมายเลขโต๊ะ -> ปริ้นออกมาติดโต๊ะได้ทันที
 
-**3.8 Reports (Manager / Owner)**
+**3.10 Reports (Manager / Owner)**
 
 รายงานยอดขายและพฤติกรรมลูกค้า ดึงข้อมูลจาก `orders`, `orderitems`, `orderitemoptions`, `payments`
 
@@ -726,9 +752,9 @@ Background Job (ทุกวัน เวลา 00:00):
 | ORM | Entity Framework Core + Pomelo.EntityFrameworkCore.MySql |
 | Database | MySQL 9.6 (csi402db) |
 | Database Tool | Azure Data Studio |
-| Real-time | SignalR (WebSocket) สำหรับ Order Status และ Public Screen |
+| Real-time | SignalR (WebSocket) — Hub URL: `/hubs/cafe` (ลงทะเบียนใน `Program.cs`), Group-based messaging: Staff join group `"staff"`, Customer join group `"order-{orderId}"` |
 | Background Jobs | In-process (ตรวจสอบ `ReservedUntil` ใน Controller — ไม่ใช้ Hangfire) |
-| Authentication | Session-based (`HttpContext.Session`) |
+| Authentication | Session-based (`HttpContext.Session`) — เก็บ `StaffId`, `Username`, `StaffRoleId`, `FullName`, `LoginTime` หลัง Login สำเร็จ, Timeout 20 นาที, Password hashed ด้วย SHA-256 |
 | File Storage | Local (`wwwroot/uploads/slips/` และ `wwwroot/uploads/menus/`) |
 
 ### Frontend
@@ -795,62 +821,68 @@ Background Job (ทุกวัน เวลา 00:00):
 
 ### 9.1 สถาปัตยกรรมระบบ ASP.NET Core MVC
 
-ระบบออกแบบบน ASP.NET Core MVC โดยแยก Layer ออกเป็น 3 ชั้นหลัก ได้แก่ Presentation Layer (Views + Controllers), Business Logic Layer (Services), และ Data Access Layer (Repositories + EF Core) Controller รับ Request จาก Client แล้วส่งต่อไปยัง Service เพื่อประมวลผล Business Logic จากนั้น Service เรียกใช้ Repository เพื่อเข้าถึง MySQL ผ่าน Entity Framework Core (Pomelo.EntityFrameworkCore.MySql) ผลลัพธ์ถูกส่งกลับใน ViewModel แล้ว Render ผ่าน Razor View หรือตอบกลับเป็น JSON สำหรับ API Endpoint
+ระบบออกแบบบน ASP.NET Core MVC แบบ 2 ชั้น ได้แก่ Presentation Layer (Controllers + Razor Views) และ Data Access Layer (EF Core DbContext) โดย Controller รับ HTTP Request จาก Client ประมวลผล Business Logic ภายในตัวเอง แล้วเข้าถึงฐานข้อมูล MySQL โดยตรงผ่าน `Csi402dbContext` (EF Core + Pomelo.EntityFrameworkCore.MySql) ผลลัพธ์ถูกส่งกลับใน ViewModel และ Render ผ่าน Razor View ส่วน SignalR ใช้ `IHubContext<CafeHub>` ที่ Inject เข้า Controller เพื่อส่ง Real-time notification
 
 ```mermaid
 graph LR
     subgraph "Client Layer"
-        A["Mobile Web App (PWA)"]
-        B["POS Tablet"]
-        C["Web Admin"]
-        D["Public Screen (TV)"]
+        A["Mobile Web App (PWA)\nCustomer"]
+        B["POS Tablet\nBarista / Cashier"]
+        C["Web Admin\nManager / Finance / Owner"]
+        D["Public Screen (TV)\nQueue Display"]
     end
 
-    subgraph "ASP.NET Core MVC"
-        subgraph "Presentation Layer"
-            E["Controllers"]
-            F["Razor Views / JSON Response"]
-        end
-        subgraph "Business Logic Layer"
-            G["OrderService"]
-            H["PaymentService"]
-            I["InventoryService"]
-            J["MemberService"]
-            K["PromotionService"]
-        end
-        subgraph "Data Access Layer"
-            L["Repositories"]
-            M["DbContext (EF Core + Pomelo MySQL)"]
-        end
+    subgraph "ASP.NET Core MVC — Presentation Layer"
+        E1["CustomerController\n/Customer/*"]
+        E2["PosController\n/Pos/*"]
+        E3["AdminController\n/Admin/*"]
+        E4["AccountController\n/Account/*"]
+        E5["HomeController\n/Home/*"]
+        E6["PublicController\n/Public/*"]
+        E7["MenuController\n/Menu/*"]
+        F["Razor Views (.cshtml)\n+ ViewModels"]
+    end
+
+    subgraph "Data Access Layer"
+        G["Csi402dbContext\n(EF Core + Pomelo MySQL)"]
     end
 
     subgraph "Infrastructure"
-        N["MySQL 9.6 (csi402db)"]
-        O["Local Storage (wwwroot/uploads/)"]
-        P["Background Jobs (In-process)"]
-        Q["SignalR Hub"]
+        H["MySQL 9.6\ncsi402db"]
+        I["Local Storage\nwwwroot/uploads/"]
+        J["SignalR Hub\nCafeHub @ /hubs/cafe"]
+        K["Session Store\n(In-Memory)"]
     end
 
-    A --> E
-    B --> E
-    C --> E
-    D --> Q
-    E --> F
-    E --> G
-    E --> H
-    E --> I
-    E --> J
-    E --> K
-    G --> L
-    H --> L
-    I --> L
-    J --> L
-    K --> L
-    L --> M
-    M --> N
-    H --> O
-    G --> P
-    G --> Q
+    A --> E1
+    A --> E5
+    A --> E7
+    B --> E2
+    B --> E3
+    C --> E3
+    C --> E4
+    D --> E6
+    E1 --> F
+    E2 --> F
+    E3 --> F
+    E4 --> F
+    E5 --> F
+    E6 --> F
+    E7 --> F
+    E1 --> G
+    E2 --> G
+    E3 --> G
+    E4 --> G
+    E5 --> G
+    E1 --> I
+    E1 --> J
+    E2 --> J
+    E3 --> J
+    G --> H
+    E1 --> K
+    E2 --> K
+    E3 --> K
+    E4 --> K
 ```
 
 ---
@@ -990,69 +1022,66 @@ flowchart LR
 
 ### 9.4 จุดเชื่อมต่อ Frontend และ Backend (Frontend-Backend Integration)
 
-Sequence Diagram แสดงการไหลของ HTTP Request ระหว่าง Client แต่ละประเภทกับ API Endpoint โดย Mobile Web App ใช้ REST API ผ่าน HTTP เป็นหลัก และหน้า Order Status รวมถึง Public Screen ใช้ SignalR เพื่อรับข้อมูล Real-time
+Sequence Diagram แสดงการไหลของ HTTP Request ระหว่าง Client แต่ละประเภทกับ Controller ตามรูปแบบ MVC Route ที่ใช้จริงในระบบ ทั้งฝั่ง Customer (`CustomerController`), POS (`PosController`, `AdminController`) และ Real-time ผ่าน SignalR Hub (`/hubs/cafe`)
 
 ```mermaid
 sequenceDiagram
     participant C as Customer (PWA)
-    participant POS as Staff (POS Tablet)
-    participant API as ASP.NET Core API
-    participant SRV as Service Layer
+    participant POS as Staff (POS / Admin)
+    participant CTRL as ASP.NET Core Controller
     participant DB as MySQL (csi402db)
-    participant HUB as SignalR Hub
+    participant HUB as CafeHub (/hubs/cafe)
 
-    Note over C,DB: Flow: สั่งอาหาร (Guest)
-    C->>API: GET /api/menu?table=5
-    API->>SRV: MenuService.GetAvailableMenus()
-    SRV->>DB: SELECT menuitems WHERE IsAvailable=1
-    DB-->>SRV: menuitems[]
-    SRV-->>API: MenuViewModel
-    API-->>C: JSON Response
+    Note over C,DB: Flow: ดูเมนูและสั่งอาหาร
+    C->>HUB: SignalR JoinGroup("order-{orderId}")
+    C->>CTRL: GET /Customer/Menu?table=T01
+    CTRL->>DB: SELECT menuitems WHERE IsAvailable=1
+    DB-->>CTRL: menuitems[]
+    CTRL-->>C: Razor View (Menu.cshtml)
 
-    C->>API: POST /api/orders (GuestName, TableId, Items[])
-    API->>SRV: OrderService.CreateOrder()
-    SRV->>DB: INSERT orders + orderitems + Reserve Stock
-    DB-->>SRV: OrderId
-    SRV-->>API: OrderCreatedResult
-    API-->>C: orderId, reservedUntil
+    C->>CTRL: POST /Customer/AddToCart (MenuItemId, Options)
+    CTRL-->>C: Redirect Cart (Session-based)
 
-    Note over C,DB: Flow: ชำระเงิน — ลูกค้าอัปโหลดสลิปเอง
-    C->>C: แสดง QR PromptPay + Banner เตือนให้ Screenshot สลิป
-    C->>C: โอนเงินผ่านธนาคาร -> Screenshot สลิป
-    C->>API: POST /api/payments/slip (OrderId, SlipFile)
-    API->>SRV: PaymentService.UploadSlip()
-    SRV->>DB: INSERT payments (PaymentStatusId=1 Pending, SlipUrl)
-    SRV->>HUB: NotifyNewSlip(OrderId) ไปยัง POS
-    HUB-->>POS: Real-time แจ้งเตือน มีสลิปใหม่รอตรวจ
-    SRV-->>API: PaymentId
-    API-->>C: status Pending รอพนักงาน Verify
+    C->>CTRL: POST /Customer/PlaceOrder (GuestName/Phone, TableId)
+    CTRL->>DB: INSERT orders + orderitems + ReservedQty += QuantityRequired
+    DB-->>CTRL: OrderId
+    CTRL-->>C: Redirect /Customer/Payment/{orderId}
 
-    Note over POS,DB: Flow: Verify สลิป
-    POS->>API: PUT /api/payments/{id}/verify (Approved, StaffId)
-    API->>SRV: PaymentService.VerifySlip()
-    SRV->>DB: UPDATE payments SET PaymentStatusId=2, VerifiedBy, VerifiedAt
-    SRV->>DB: UPDATE orders SET OrderStatusId=2, QueueNumber
-    SRV->>DB: InventoryService.CutStock()
-    SRV->>HUB: NotifyOrderPaid(OrderId) ไปยัง Customer
+    Note over C,DB: Flow: ชำระเงิน — ลูกค้าอัปโหลดสลิป
+    C->>CTRL: POST /Customer/UploadSlip/{orderId} (IFormFile slip)
+    CTRL->>DB: INSERT payments (PaymentStatusId=1, SlipUrl)
+    CTRL->>HUB: Clients.Group("staff").SendAsync("NotifyNewSlip", orderId)
+    HUB-->>POS: Real-time แจ้งเตือนมีสลิปใหม่รอตรวจ
+    CTRL-->>C: Redirect /Customer/Tracking?orderId={id}
+
+    Note over POS,DB: Flow: Approve สลิป (Admin หรือ POS)
+    POS->>CTRL: POST /Admin/ApprovePayment/{paymentId}
+    CTRL->>DB: UPDATE payments SET PaymentStatusId=2, VerifiedBy, VerifiedAt
+    CTRL->>DB: UPDATE orders SET OrderStatusId=2, QueueNumber=A00x
+    CTRL->>DB: ลด ingredients.StockQuantity จาก recipes + INSERT inventorylogs
+    CTRL->>DB: UPDATE members.Points += FLOOR(NetAmount/10)
+    CTRL->>HUB: Clients.Group("order-{id}").SendAsync("NotifyOrderPaid")
     HUB-->>C: Real-time OrderStatus=Paid
-    API-->>POS: success true
+    CTRL-->>POS: Redirect /Admin/Payments
 
     Note over POS,DB: Flow: Reject สลิป
-    POS->>API: PUT /api/payments/{id}/verify (Rejected, Reason, StaffId)
-    API->>SRV: PaymentService.RejectSlip()
-    SRV->>DB: UPDATE payments SET PaymentStatusId=3
-    SRV->>HUB: NotifySlipRejected(OrderId, Reason) ไปยัง Customer
-    HUB-->>C: Real-time แจ้งเหตุผล + ให้อัปโหลดสลิปใหม่
-    API-->>POS: success true
+    POS->>CTRL: POST /Admin/RejectPayment/{paymentId} (rejectReason)
+    CTRL->>DB: UPDATE payments SET PaymentStatusId=3, RejectReason
+    CTRL->>HUB: Clients.Group("order-{id}").SendAsync("NotifySlipRejected", reason)
+    HUB-->>C: Real-time แสดงเหตุผล + เปิดให้อัปโหลดสลิปใหม่
+    CTRL-->>POS: Redirect /Admin/Payments
 
-    Note over POS,DB: Flow: อัปเดตสถานะ KDS
-    POS->>API: PUT /api/orders/{id}/status (Ready)
-    API->>SRV: OrderService.UpdateStatus()
-    SRV->>DB: UPDATE orders SET OrderStatusId=4
-    SRV->>HUB: NotifyOrderReady(QueueNumber)
+    Note over POS,DB: Flow: KDS — Barista กด Done และแจ้ง Ready
+    POS->>CTRL: POST /Pos/MarkItemDone/{itemId}
+    CTRL->>DB: UPDATE orderitems SET OrderItemStatusId=3
+    CTRL-->>POS: JSON ok
+
+    POS->>CTRL: POST /Pos/MarkOrderCompleted/{orderId}
+    CTRL->>DB: UPDATE orders SET OrderStatusId=4 (Ready)
+    CTRL->>HUB: Clients.All.SendAsync("NotifyOrderReady", queueNumber)
     HUB-->>C: Real-time OrderStatus=Ready
-    HUB-->>API: Broadcast to Public Screen
-    API-->>POS: success true
+    HUB-->>POS: Public Screen รับ event อัปเดตจอแสดงคิว
+    CTRL-->>POS: JSON ok
 ```
 
 ---
@@ -1070,9 +1099,10 @@ sequenceDiagram
 
 ---
 
-## 11. แผนพัฒนา 5 วัน (Development Plan: 1-5 เมษายน 2026)
+## 11. บันทึกการพัฒนา (Development Log: 12 มีนาคม - 16 เมษายน 2026)
+**กำหนดส่ง:** 19 เมษายน 2026 ภายใน 23:59 น. | **นำเสนอ:** 20-21 เมษายน 2026
 
-กำหนดส่ง: **5 เมษายน 2026** — เหลือ 5 วัน ต้องโฟกัสเฉพาะสิ่งที่จำเป็น
+แผนพัฒนาเร่งด่วน 5 วัน (1-5 เมษายน) ดำเนินการแล้วเสร็จ ต่อด้วยการแก้ไข Bug และ Polish จนถึงวันส่ง
 
 ### สิ่งที่ทำแล้ว (ณ 31 มีนาคม 2026)
 - Customer ordering flow (Menu → Cart → Checkout → Payment Slip Upload → Tracking)
@@ -1146,8 +1176,8 @@ sequenceDiagram
 | Hangfire | ใช้ In-process check แทน |
 | Email / SMS | ไม่จำเป็นสำหรับ Demo |
 | Export Excel / PDF | ไม่จำเป็นสำหรับ Demo |
-| Staff Shift Management | มีโมเดลแล้ว แต่ UI ไม่จำเป็นสำหรับ Demo |
+| Staff Shift Management | UI สร้างเสร็จแล้ว (`Views/Admin/Shifts.cshtml`) แต่ซ่อนชั่วคราว — ยังขัดเกลาไม่เสร็จ ไม่พร้อมสำหรับการ Demo |
 
 ---
 
-*เอกสารนี้เป็นพิมพ์เขียวฉบับสมบูรณ์ (v8.0)*
+*เอกสารนี้เป็นพิมพ์เขียวฉบับสมบูรณ์ (v8.1 — อัปเดต 16/04/2026)*

@@ -1,14 +1,14 @@
 # Smart Cafe Management System — CLAUDE.md
 
 ไฟล์นี้ให้ Context สำหรับ Claude Code ในการทำงานกับโปรเจกต์นี้
-อ้างอิง README.md v8.0 สำหรับรายละเอียดทั้งหมด
+อ้างอิง README.md v8.1 สำหรับรายละเอียดทั้งหมด
 
 ---
 
 ## บริบทโปรเจกต์
 
 - **ประเภท:** งานนักศึกษาชั้นปีที่ 3 สาขาวิทยาการคอมพิวเตอร์และนวัตกรรมการพัฒนาซอฟต์แวร์
-- **กำหนดส่ง:** 5 เมษายน 2026
+- **กำหนดส่ง:** 19 เมษายน 2026 ภายใน 23:59 น. (นำเสนอ 20-21 เมษายน 2026)
 - **เป้าหมาย:** Demo ได้ใช้งานได้จริงในระดับ Prototype ไม่ต้องเชื่อมต่อบริการภายนอกที่มีค่าใช้จ่าย
 
 ---
@@ -30,7 +30,7 @@
 
 ---
 
-## บันทึกการพัฒนา 5 วัน (1-5 เมษายน 2026 — เสร็จสิ้นแล้ว)
+## บันทึกการพัฒนา (12 มีนาคม - 16 เมษายน 2026)
 
 ### วันที่ 1 — 1 เมษายน: POS Interface + KDS
 - `PosController.cs` + `Views/Pos/Queue.cshtml` — Order Queue (Split View: Unpaid ซ้าย / Paid ขวา)
@@ -57,6 +57,12 @@
 - ทดสอบ flow ตั้งแต่ต้นจนจบ (Guest → Order → Slip → Approve → KDS → Ready → Public Screen)
 - ทดสอบ Member flow (Points + Stamps)
 - แก้ bug + UI polish
+
+### หลัง 5 เมษายน — Bug Fix + Polish ต่อเนื่อง (ถึง 19 เมษายน)
+- แก้ bug Razor syntax error ใน `Views/Admin/Shifts.cshtml` (บรรทัด 112: `@{}` ซ้อนใน code block)
+- ซ่อนหน้า Shift Management (`/Admin/Shifts`) ชั่วคราว — ยังขัดเกลาไม่เสร็จ ไม่พร้อม Demo
+  - `Views/Shared/_AdminLayout.cshtml`: ลบ nav link ออก
+  - `AdminController.Shifts()`: redirect กลับ Dashboard ทันที
 
 ---
 
@@ -202,39 +208,103 @@ TotalAmount = SUM(UnitPrice x Quantity) + SUM(PriceAdjustment)
 
 ---
 
-## API Endpoints (เป้าหมาย)
+## MVC Routes (Actual Implementation)
+
+ระบบใช้รูปแบบ `/{Controller}/{Action}/{id?}` ตาม ASP.NET Core MVC — ไม่ใช่ REST API style
 
 ```
-POST   /api/orders                    สร้างออเดอร์
-GET    /api/menu?table={no}           ดึงเมนู
-GET    /api/orders/track?table={no}   ติดตามออเดอร์ด้วยเบอร์โต๊ะ
-PUT    /api/orders/{id}/status        อัปเดตสถานะ
+CustomerController:
+GET    /Customer/Menu?table=T01         แสดงเมนู
+GET    /Customer/Detail/{id}?table=T01  รายละเอียดเมนู
+GET    /Customer/Cart                   ตะกร้าสินค้า (Session)
+POST   /Customer/AddToCart              เพิ่มสินค้าในตะกร้า
+POST   /Customer/RemoveFromCart         ลบสินค้าจากตะกร้า
+POST   /Customer/UpdateCartQty          แก้จำนวนในตะกร้า
+GET    /Customer/Checkout               หน้า Checkout (ระบุ Guest/Member)
+POST   /Customer/PlaceOrder             สร้างออเดอร์ + Reserve Stock
+GET    /Customer/Payment/{orderId}      หน้าชำระเงิน + QR PromptPay
+POST   /Customer/UploadSlip/{orderId}   อัปโหลดสลิป (IFormFile)
+POST   /Customer/RedeemPoints           แลกแต้มที่ POS
+POST   /Customer/RedeemStamp            ใช้แสตมป์ที่ POS
+POST   /Customer/CancelOrder/{id}       ยกเลิกออเดอร์
+GET    /Customer/Tracking?orderId={id}  ติดตามสถานะออเดอร์
+GET    /Customer/TrackByTable?table=T01 ติดตามด้วยเบอร์โต๊ะ
+GET    /Customer/MyOrders               ประวัติออเดอร์ (Member)
+GET    /Customer/Rewards                แคตาล็อกของรางวัล
+GET    /Customer/RegisterMobile?table=  สมัครสมาชิกบนมือถือ
+GET    /Customer/EditProfile            แก้ไขโปรไฟล์
+GET    /Customer/ChangePhone            เปลี่ยนเบอร์โทร
 
-POST   /api/payments/slip             ลูกค้าอัปโหลดสลิป
-PUT    /api/payments/{id}/verify      พนักงาน Approve/Reject
+AdminController:
+GET    /Admin                           Dashboard
+GET    /Admin/MenuList                  รายการเมนูทั้งหมด
+GET    /Admin/MenuCreate                สร้างเมนูใหม่
+POST   /Admin/MenuEdit/{id}             แก้ไขเมนู
+POST   /Admin/MenuDelete/{id}           ลบเมนู
+POST   /Admin/ToggleMenuAvailability/{id} เปิด/ปิดเมนู
+GET    /Admin/Orders?status={id}        รายการออเดอร์
+POST   /Admin/UpdateOrderStatus         อัปเดตสถานะออเดอร์
+GET    /Admin/Payments                  รายการสลิปรอ Verify
+POST   /Admin/ApprovePayment/{id}       Approve สลิป
+POST   /Admin/RejectPayment/{id}        Reject สลิป
+GET    /Admin/Inventory                 จัดการสต็อก
+POST   /Admin/Restock                   บันทึก Restock
+POST   /Admin/AddIngredient             เพิ่มวัตถุดิบใหม่
+GET    /Admin/Recipes                   จัดการสูตรเครื่องดื่ม
+POST   /Admin/AddRecipe                 เพิ่มสูตร
+POST   /Admin/DeleteRecipe              ลบสูตร
+GET    /Admin/Promotions                จัดการโปรโมชั่น
+GET    /Admin/Reports                   รายงานยอดขาย
+GET    /Admin/Finance                   Finance Reconciliation
+GET    /Admin/Tables                    จัดการโต๊ะ
+GET    /Admin/QrPrint?tableId={id}      QR Code แบบ Print-ready
+GET    /Admin/Setup                     ตั้งค่าระบบ
 
-POST   /api/inventory/wastage         บันทึก Wastage
+PosController:
+GET    /Pos/Queue                       POS Queue (Split View)
+POST   /Pos/MarkItemDone/{itemId}       Barista กด Done รายการ
+POST   /Pos/CallCustomer/{orderId}      แจ้งเตือนลูกค้า
+POST   /Pos/MarkOrderCompleted/{orderId} กด Served — OrderStatusId=5
+POST   /Pos/ApprovePaymentAtPos/{id}    Approve สลิปที่ POS
+POST   /Pos/RejectPaymentAtPos/{id}     Reject สลิปที่ POS
+POST   /Pos/ApproveGroupCheckin/{id}    อนุมัติ Group Check-in
 
-POST   /api/tables/{id}/qrcode        Generate QR Code ใหม่
-GET    /api/tables/{id}/qrcode/print  QR Code แบบ Print-ready
+AccountController:
+GET    /Account/Login                   หน้า Login พนักงาน
+POST   /Account/Login                   ประมวลผล Login (SHA-256 hash)
+GET    /Account/Logout                  ล้าง Session
+GET    /Account/AddStaff                เพิ่มพนักงาน (Manager/Owner)
+GET    /Account/MemberList              รายชื่อสมาชิก
+GET    /Account/Register                สมัครสมาชิก (ลูกค้าเท่านั้น)
 
-GET    /api/dashboard                 Dashboard
-GET    /api/reports/sales             ยอดขาย (filter: hour/dayofweek/month/quarter/year/menu)
-GET    /api/reports/payment-channels  การชำระเงินแยกตามช่องทาง
-GET    /api/reports/menu-options      ความนิยม Options
-GET    /api/reports/wastage           ของเสียแยกตามเมนู
+HomeController:
+GET    /Home/Index                      Landing Page (ไม่ต้อง Login)
+GET    /Home/Dashboard                  Dashboard ภาพรวม (ต้อง Login)
+
+MenuController:
+GET    /Menu/Index?category={name}      เมนูทั้งหมด กรองตาม Category
+
+PublicController:
+GET    /Public/Queue                    จอแสดงคิว (ไม่ต้อง Login)
 ```
 
 ---
 
 ## SignalR Events
 
-| Event | ทิศทาง | ใช้งานเมื่อ |
+**Hub URL:** `/hubs/cafe` (ลงทะเบียนใน `Program.cs` ด้วย `app.MapHub<CafeHub>("/hubs/cafe")`)
+
+**Group Architecture:** Client เรียก `JoinGroup(groupName)` เพื่อเข้า Group ก่อนรับ Event
+- พนักงานทุก Role เข้า group `"staff"` — รับ `NotifyNewSlip`
+- ลูกค้าเข้า group `"order-{orderId}"` — รับ `NotifyOrderPaid`, `NotifySlipRejected`, `NotifyOrderReady`
+- Public Screen รับ `NotifyOrderReady` แบบ Broadcast (`Clients.All`)
+
+| Event | Group เป้าหมาย | ใช้งานเมื่อ |
 | :--- | :--- | :--- |
-| `NotifyNewSlip` | Server → POS | ลูกค้าอัปโหลดสลิปสำเร็จ |
-| `NotifyOrderPaid` | Server → Customer | พนักงาน Approve สลิป |
-| `NotifySlipRejected` | Server → Customer | พนักงาน Reject สลิป (พร้อมเหตุผล) |
-| `NotifyOrderReady` | Server → Customer + Public Screen | OrderStatusId เปลี่ยนเป็น 4 (Ready) |
+| `NotifyNewSlip` | `Clients.Group("staff")` | ลูกค้าอัปโหลดสลิปสำเร็จ |
+| `NotifyOrderPaid` | `Clients.Group("order-{id}")` | พนักงาน Approve สลิป |
+| `NotifySlipRejected` | `Clients.Group("order-{id}")` | พนักงาน Reject สลิป (พร้อมเหตุผล) |
+| `NotifyOrderReady` | `Clients.All` | OrderStatusId เปลี่ยนเป็น 4 (Ready) — แจ้งทั้งลูกค้าและจอ TV |
 
 ---
 
@@ -252,7 +322,7 @@ GET    /api/reports/wastage           ของเสียแยกตามเ
 ---
 
 ## ไฟล์สำคัญในโปรเจกต์
-- `README.md` — Design Blueprint ฉบับสมบูรณ์ v8.0
+- `README.md` — Design Blueprint ฉบับสมบูรณ์ v8.1
 - `SQLQuery_project.sql` — Database Schema + Seed Data ทั้งหมด (รันครั้งเดียวได้ครบ)
 - `SQLSeedDemo.sql` — ข้อมูลตัวอย่างสำหรับ Demo (รันต่อจาก SQLQuery_project.sql)
 - `SPU_CSI402_Project_T2_Y3.session.sql` — คำสั่ง SQL ที่รันได้ทันทีสำหรับการเปลี่ยนแปลงแต่ละรอบ

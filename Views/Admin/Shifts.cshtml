@@ -109,12 +109,10 @@
         else
         {
             <!-- กำลังทำงานอยู่ — แสดงบัตรกะปัจจุบัน -->
-            @{
-                var shiftStart = openShift.ShiftStart ?? DateTime.Now;
-                var elapsed    = DateTime.Now - shiftStart;
-                // แสดงวันที่เป็น พ.ศ. โดยใช้ Thai culture (server culture)
-                var shiftStartDisplay = shiftStart.ToString("dd/MM/yyyy HH:mm");
-            }
+            var shiftStart = openShift.ShiftStart ?? DateTime.Now;
+            var elapsed    = DateTime.Now - shiftStart;
+            // แสดงวันที่เป็น พ.ศ. โดยใช้ Thai culture (server culture)
+            var shiftStartDisplay = shiftStart.ToString("dd/MM/yyyy HH:mm");
             <div class="rounded-xl overflow-hidden border border-green-300"
                  style="background:linear-gradient(135deg,#166534,#15803d);">
                 <div class="px-5 py-4 text-white">

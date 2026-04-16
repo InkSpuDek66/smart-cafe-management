@@ -1658,6 +1658,8 @@ public class AdminController : Controller
     // ============================================================
     public IActionResult Shifts()
     {
+        // ซ่อนชั่วคราว — redirect กลับ Dashboard
+        return RedirectToAction("Dashboard");
         if (!IsLoggedIn()) return RedirectToAction("Login", "Account");
         // Manager (3), Owner (5) จัดการกะได้ ส่วน Barista (1), Cashier (2) เช็คอินตัวเองได้
         if (!HasRole(1, 2, 3, 5)) return ForbiddenRedirect();
