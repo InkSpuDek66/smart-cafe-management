@@ -1014,7 +1014,8 @@ flowchart LR
 ```mermaid
 flowchart TD
     A(["เริ่มต้น: สแกน QR Code"]) --> B{"มีออเดอร์ค้าง<br/>ในโต๊ะนี้?"}
-    B -- "ใช่" --> C["Redirect ไปหน้า<br/>Order Status"]
+    B -- "ใช่" --> C["Redirect ไปหน้า Tracking<br/>แสดงสถานะออเดอร์ปัจจุบัน"]
+    C --> X(["สิ้นสุด: ลูกค้าติดตาม<br/>ออเดอร์ที่มีอยู่"])
     B -- "ไม่ใช่" --> D["แสดงหน้า Digital Menu"]
     D --> E["เลือกเมนู + Options"]
     E --> F["กด Confirm Order<br/>Reserve Stock 15 นาที"]
@@ -1026,11 +1027,16 @@ flowchart TD
     J --> K{"วิธีชำระ?"}
     K -- "โอนเงิน" --> L["แสดง QR PromptPay<br/>+ แจ้งเตือนให้ Screenshot สลิป"]
     K -- "เงินสด" --> M["พนักงานรับเงิน<br/>PaymentMethodId=1"]
-    L --> L2["ลูกค้าโอนเงิน<br/>แล้วอัปโหลดสลิปเอง<br/>payments.SlipUrl"]
+    L --> TL{"Reserve หมดอายุ<br/>15 นาที?"}
+    TL -- "หมด" --> CN["Auto-Cancel Order<br/>คืน ReservedQty"]
+    CN --> Y(["สิ้นสุด: OrderStatusId=6<br/>Cancelled"])
+    TL -- "ยังไม่หมด" --> L2["ลูกค้าโอนเงิน<br/>แล้วอัปโหลดสลิปเอง<br/>payments.SlipUrl"]
     L2 --> N["POS แจ้งเตือนพนักงาน<br/>มีสลิปรอ Verify SignalR"]
     N --> O{"สลิปถูกต้อง?"}
-    O -- "ไม่" --> P["Reject<br/>PaymentStatusId=3<br/>แจ้งลูกค้าอัปโหลดใหม่"]
-    P --> L
+    O -- "ไม่" --> P{"Reject ครบ 3 ครั้ง?"}
+    P -- "ยังไม่ครบ" --> P2["Reject ครั้งที่ n<br/>PaymentStatusId=3<br/>แจ้งลูกค้าอัปโหลดใหม่"]
+    P2 --> L
+    P -- "ครบแล้ว" --> CN
     O -- "ใช่" --> Q["Approve<br/>PaymentStatusId=2"]
     M --> Q
     Q --> R["OrderStatusId=2 Paid<br/>Generate QueueNumber<br/>ตัดสต็อกจาก recipes<br/>คำนวณ Points + Stamps"]
@@ -1049,32 +1055,35 @@ flowchart TD
 
 Context Diagram แสดงขอบเขต (Boundary) ของระบบทั้งหมด โดยมองระบบเป็น Process กลางตัวเดียว แล้วแสดง External Entity ทั้งหมดที่ส่งข้อมูลเข้า-ออก ได้แก่ Customer, Staff, Manager/Owner, Finance, และ Bank/Payment Gateway ช่วยให้เห็นว่าข้อมูลอะไรไหลเข้า-ออกระบบจากภายนอก
 
-> **Notation:** Gane & Sarson — External Entity = สี่เหลี่ยม, Process = สี่เหลี่ยมมุมมน (Mermaid ใช้ Subroutine shape `[[...]]` จำลอง), Data Store = Open rectangle (Mermaid ใช้ Cylinder `[(...)]` จำลอง)
+> **Notation:** Gane & Sarson
+> - External Entity = สี่เหลี่ยมผืนผ้า: Mermaid `["..."]`
+> - Process = สี่เหลี่ยมมุมมน: Mermaid `("...")`
+> - Data Store = สี่เหลี่ยมเปิดด้านขวา (Mermaid ไม่มี native shape ใช้ Cylinder `[("...")]` แทน พร้อม prefix `D#`)
 
 ```mermaid
 flowchart TD
-    CUST["Customer<br/>Guest / Member"]
-    STAFF["Staff<br/>Barista / Cashier"]
-    MGR["Manager / Owner"]
-    FIN["Finance"]
-    BANK["Bank /<br/>Payment Gateway"]
+    CUST["ลูกค้า"]
+    STAFF["พนักงาน"]
+    MGR["ผู้จัดการและเจ้าของร้าน"]
+    FIN["ฝ่ายการเงิน"]
+    BANK["ธนาคารและ Payment Gateway"]
 
-    SYS[["0. Smart Cafe<br/>Management System"]]
+    SYS("0 ระบบจัดการร้านกาแฟ<br/>Smart Cafe Management")
 
-    CUST -- "QR Scan, เลือกเมนู, สั่งซื้อ, อัปโหลดสลิป" --> SYS
-    SYS -- "สถานะออเดอร์, หมายเลขคิว, Rewards Catalog" --> CUST
+    CUST -- "คำสั่งซื้อ, สลิปโอนเงิน" --> SYS
+    SYS -- "หมายเลขคิว, สถานะออเดอร์, รายการของรางวัล" --> CUST
 
-    STAFF -- "Verify สลิป, อัปเดตสถานะ, บันทึก Wastage" --> SYS
-    SYS -- "ออเดอร์ + สูตรบน KDS, รายการคิว, Alert สต็อก" --> STAFF
+    STAFF -- "ผลการตรวจสลิป, สถานะรายการ, บันทึก Wastage" --> SYS
+    SYS -- "คิวเครื่องดื่มและสูตร, การแจ้งเตือนสต็อก" --> STAFF
 
-    MGR -- "จัดการเมนู, ตั้งโปรโมชั่น, จัดการพนักงาน" --> SYS
-    SYS -- "Dashboard, รายงานยอดขาย, รายงาน Wastage" --> MGR
+    MGR -- "เมนู, โปรโมชั่น, ข้อมูลพนักงาน" --> SYS
+    SYS -- "รายงานสรุปยอดและ Dashboard" --> MGR
 
-    FIN -- "Verify ยอด, ตรวจสอบสลิป" --> SYS
+    FIN -- "คำขอรายงานและตรวจสอบบัญชี" --> SYS
     SYS -- "รายงาน P&L, รายการ payments รายวัน" --> FIN
 
-    BANK -- "Webhook ยืนยันการโอน Dynamic QR" --> SYS
-    SYS -- "ข้อมูลยอดชำระ" --> BANK
+    BANK -- "การยืนยันการโอนเงิน" --> SYS
+    SYS -- "คำขอเรียกเก็บเงินผ่าน QR" --> BANK
 ```
 
 ---
@@ -1083,63 +1092,71 @@ flowchart TD
 
 DFD Level 1 แตก Process กลางออกเป็น 6 Sub-process ที่ทำงานร่วมกัน แต่ละ Process เชื่อมต่อกับ Data Store ที่เกี่ยวข้องในฐานข้อมูล `csi402db` และรับ/ส่งข้อมูลกับ External Entity ที่แตกต่างกัน
 
-> **Notation:** Gane & Sarson — ใช้ notation เดียวกับ Context Diagram: External Entity = สี่เหลี่ยม, Process = Subroutine `[[...]]` (เลขกำกับ X.0), Data Store = Cylinder `[(...)]`
+> **Notation:** Gane & Sarson (ใช้สัญลักษณ์เดียวกับ DFD Level 0)
+> - Process = สี่เหลี่ยมมุมมน `("...")` พร้อมเลขกำกับ `X.0`
+> - Data Store = Cylinder `[("...")]` พร้อม prefix `D1-D6`
+> - External Entity = Rectangle `["..."]`
 
 ```mermaid
 flowchart TD
-    CUST["Customer"]
-    STAFF["Staff"]
-    MGR["Manager / Owner"]
-    FIN["Finance"]
-    BANK["Bank"]
+    CUST["ลูกค้า"]
+    STAFF["พนักงาน"]
+    MGR["ผู้จัดการและเจ้าของร้าน"]
+    FIN["ฝ่ายการเงิน"]
+    BANK["ธนาคาร"]
 
-    P1[["1.0 Order<br/>Management"]]
-    P2[["2.0 Payment<br/>Processing"]]
-    P3[["3.0 Inventory<br/>Management"]]
-    P4[["4.0 Member<br/>and Loyalty"]]
-    P5[["5.0 Finance<br/>and Reporting"]]
-    P6[["6.0 Menu and<br/>Promotion Mgmt"]]
+    P1("1.0 รับและจัดการคำสั่งซื้อ")
+    P2("2.0 ตรวจสอบและยืนยันการชำระเงิน")
+    P3("3.0 จัดการสต็อกและสูตรเครื่องดื่ม")
+    P4("4.0 สะสมและแลกแต้ม-แสตมป์")
+    P5("5.0 จัดทำรายงานการเงินและยอดขาย")
+    P6("6.0 จัดการเมนูและโปรโมชั่น")
 
-    DS1[("D1: orders<br/>orderitems<br/>orderitemoptions")]
-    DS2[("D2: payments")]
-    DS3[("D3: ingredients<br/>recipes<br/>inventorylogs")]
-    DS4[("D4: members<br/>pointtransactions")]
-    DS5[("D5: rewards<br/>promotions")]
-    DS6[("D6: menuitems<br/>tables")]
+    DS1[("D1 คำสั่งซื้อ")]
+    DS2[("D2 การชำระเงิน")]
+    DS3[("D3 คลังวัตถุดิบ")]
+    DS4[("D4 สมาชิกและธุรกรรมแต้ม")]
+    DS5[("D5 โปรโมชั่นและของรางวัล")]
+    DS6[("D6 เมนูและโต๊ะ")]
 
-    CUST -- "สั่งซื้อ, ข้อมูลโต๊ะ" --> P1
-    P1 -- "สถานะออเดอร์, คิว" --> CUST
-    P1 -- "ออเดอร์ + สูตร" --> STAFF
-    P1 --> DS1
-    DS6 --> P1
+    CUST -- "คำสั่งซื้อ" --> P1
+    P1 -- "หมายเลขคิว, สถานะ" --> CUST
+    P1 -- "รายการบน KDS" --> STAFF
+    STAFF -- "อัปเดตสถานะรายการ" --> P1
+    P1 -- "บันทึกคำสั่งซื้อ" --> DS1
+    DS6 -- "เมนูพร้อมขาย, ข้อมูลโต๊ะ" --> P1
 
-    STAFF -- "Verify, อัปเดตสถานะ" --> P2
-    CUST -- "สลิป" --> P2
-    P2 --> DS2
-    P2 -- "Paid Signal" --> P1
-    P2 -- "Paid Signal" --> P3
-    P2 -- "Paid Signal" --> P4
-    BANK -- "Webhook" --> P2
+    CUST -- "สลิปโอนเงิน" --> P2
+    STAFF -- "ผลการตรวจสลิป" --> P2
+    BANK -- "การยืนยันการโอน" --> P2
+    P2 -- "บันทึกการชำระเงิน" --> DS2
+    P2 -- "สัญญาณชำระสำเร็จ" --> P1
+    P2 -- "สัญญาณชำระสำเร็จ" --> P3
+    P2 -- "สัญญาณชำระสำเร็จ" --> P4
 
-    P3 -- "ตัดสต็อก, Alert" --> DS3
     STAFF -- "บันทึก Wastage" --> P3
-    DS3 --> P3
-    MGR -- "เติมสต็อก" --> P3
+    MGR -- "คำสั่ง Restock" --> P3
+    P3 -- "บันทึกการตัดสต็อก" --> DS3
+    DS3 -- "ยอดคงเหลือและสูตร" --> P3
+    P3 -- "การแจ้งเตือนสต็อกต่ำ" --> STAFF
+    P3 -- "การแจ้งเตือนสต็อกต่ำ" --> MGR
 
-    P4 --> DS4
-    DS5 --> P4
-    P4 -- "Points, Stamps" --> CUST
+    STAFF -- "คำขอแลกแต้มและแสตมป์" --> P4
+    P4 -- "บันทึกธุรกรรมแต้ม" --> DS4
+    DS4 -- "ยอดแต้มและแสตมป์คงเหลือ" --> P4
+    DS5 -- "รายการของรางวัล" --> P4
+    P4 -- "แต้มและแสตมป์สะสม" --> CUST
 
-    DS1 --> P5
-    DS2 --> P5
-    DS3 --> P5
-    P5 -- "รายงาน P&L, Dashboard" --> MGR
-    P5 -- "Finance Report" --> FIN
-    FIN -- "Verify" --> P5
+    DS1 -- "ข้อมูลยอดขาย" --> P5
+    DS2 -- "ข้อมูลการชำระ" --> P5
+    DS3 -- "ข้อมูลการใช้วัตถุดิบ" --> P5
+    FIN -- "คำขอรายงาน" --> P5
+    P5 -- "รายงาน P&L และ Dashboard" --> MGR
+    P5 -- "รายงาน Reconciliation" --> FIN
 
-    MGR -- "จัดการเมนู, โปรโมชั่น" --> P6
-    P6 --> DS6
-    P6 --> DS5
+    MGR -- "เพิ่มและแก้เมนู, โปรโมชั่น" --> P6
+    P6 -- "บันทึกเมนูและโต๊ะ" --> DS6
+    P6 -- "บันทึกโปรโมชั่นและรางวัล" --> DS5
 ```
 
 ---
