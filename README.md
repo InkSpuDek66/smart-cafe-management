@@ -120,15 +120,15 @@ dotnet run
 
 ### ข้อมูล Login สำหรับ Demo
 
-| Role | StaffId | Password |
-| :--- | :--- | :--- |
-| Owner | 690001 | 1234 |
-| Store Manager | 690002 | 1234 |
-| Finance | 690003 | 1234 |
-| Cashier | 690004 | 1234 |
-| Barista | 690005 | 1234 |
+| Role | StaffId | Username | Password |
+| :--- | :--- | :--- | :--- |
+| Owner | 690001 | admin | admin123 |
+| Cashier | 690002 | cashier1 | admin123 |
+| Barista | 690003 | barista1 | admin123 |
+| Store Manager | 690004 | manager1 | admin123 |
 
-> ข้อมูลนี้มาจาก `SQLSeedDemo.sql` — ตรวจสอบไฟล์หากค่าต่างกัน
+> หน้า Login (`/Account/Login`) รับทั้ง StaffId (ตัวเลขล้วน) หรือ Username ก็ได้ Password เก็บเป็น SHA-256 hash ใน `Staff.PasswordHash`
+> ข้อมูลนี้มาจาก `SQLSeedDemo.sql` (บรรทัด 29-33) — Seed Demo ปัจจุบันยังไม่มีผู้ใช้ Role Finance หากต้องการทดสอบให้สร้างเพิ่มผ่าน `/Account/AddStaff`
 
 ---
 
@@ -944,34 +944,34 @@ Background Job (ทุกวัน เวลา 00:00):
 ระบบออกแบบบน ASP.NET Core MVC แบบ 2 ชั้น ได้แก่ Presentation Layer (Controllers + Razor Views) และ Data Access Layer (EF Core DbContext) โดย Controller รับ HTTP Request จาก Client ประมวลผล Business Logic ภายในตัวเอง แล้วเข้าถึงฐานข้อมูล MySQL โดยตรงผ่าน `Csi402dbContext` (EF Core + Pomelo.EntityFrameworkCore.MySql) ผลลัพธ์ถูกส่งกลับใน ViewModel และ Render ผ่าน Razor View ส่วน SignalR ใช้ `IHubContext<CafeHub>` ที่ Inject เข้า Controller เพื่อส่ง Real-time notification
 
 ```mermaid
-graph LR
-    subgraph "Client Layer"
-        A["Mobile Web App (PWA)\nCustomer"]
-        B["POS Tablet\nBarista / Cashier"]
-        C["Web Admin\nManager / Finance / Owner"]
-        D["Public Screen (TV)\nQueue Display"]
+flowchart LR
+    subgraph CL["Client Layer"]
+        A["Mobile Web App PWA<br/>Customer"]
+        B["POS Tablet<br/>Barista / Cashier"]
+        C["Web Admin<br/>Manager / Finance / Owner"]
+        D["Public Screen TV<br/>Queue Display"]
     end
 
-    subgraph "ASP.NET Core MVC — Presentation Layer"
-        E1["CustomerController\n/Customer/*"]
-        E2["PosController\n/Pos/*"]
-        E3["AdminController\n/Admin/*"]
-        E4["AccountController\n/Account/*"]
-        E5["HomeController\n/Home/*"]
-        E6["PublicController\n/Public/*"]
-        E7["MenuController\n/Menu/*"]
-        F["Razor Views (.cshtml)\n+ ViewModels"]
+    subgraph PL["ASP.NET Core MVC - Presentation Layer"]
+        E1["CustomerController<br/>/Customer/*"]
+        E2["PosController<br/>/Pos/*"]
+        E3["AdminController<br/>/Admin/*"]
+        E4["AccountController<br/>/Account/*"]
+        E5["HomeController<br/>/Home/*"]
+        E6["PublicController<br/>/Public/*"]
+        E7["MenuController<br/>/Menu/*"]
+        F["Razor Views .cshtml<br/>+ ViewModels"]
     end
 
-    subgraph "Data Access Layer"
-        G["Csi402dbContext\n(EF Core + Pomelo MySQL)"]
+    subgraph DAL["Data Access Layer"]
+        G["Csi402dbContext<br/>EF Core + Pomelo MySQL"]
     end
 
-    subgraph "Infrastructure"
-        H["MySQL 9.6\ncsi402db"]
-        I["Local Storage\nwwwroot/uploads/"]
-        J["SignalR Hub\nCafeHub @ /hubs/cafe"]
-        K["Session Store\n(In-Memory)"]
+    subgraph INF["Infrastructure"]
+        H[("MySQL 9.6<br/>csi402db")]
+        I[("Local Storage<br/>wwwroot/uploads/")]
+        J["SignalR Hub<br/>CafeHub /hubs/cafe"]
+        K[("Session Store<br/>In-Memory")]
     end
 
     A --> E1
@@ -1012,33 +1012,33 @@ graph LR
 ผังงานแสดงลำดับการทำงานทั้งหมดตั้งแต่สแกน QR จนถึงรับสินค้า พร้อมแสดง Decision Point ที่สำคัญและ State ของ orders / payments ณ แต่ละขั้น
 
 ```mermaid
-flowchart LR
-    A(["Start: สแกน QR Code"]) --> B{"มีออเดอร์ค้าง\nในโต๊ะนี้?"}
-    B -- "ใช่" --> C["Redirect ไปหน้า\nOrder Status"]
+flowchart TD
+    A(["เริ่มต้น: สแกน QR Code"]) --> B{"มีออเดอร์ค้าง<br/>ในโต๊ะนี้?"}
+    B -- "ใช่" --> C["Redirect ไปหน้า<br/>Order Status"]
     B -- "ไม่ใช่" --> D["แสดงหน้า Digital Menu"]
     D --> E["เลือกเมนู + Options"]
-    E --> F["กด Confirm Order\nReserve Stock 15 นาที"]
+    E --> F["กด Confirm Order<br/>Reserve Stock 15 นาที"]
     F --> G{"สะสมแต้ม?"}
-    G -- "ไม่" --> H["กรอกชื่อเล่น (Guest)\norders.GuestName"]
-    G -- "ใช่" --> I["กรอกเบอร์โทร (Member)\norders.MemberId"]
+    G -- "ไม่" --> H["กรอกชื่อเล่น Guest<br/>orders.GuestName"]
+    G -- "ใช่" --> I["กรอกเบอร์โทร Member<br/>orders.MemberId"]
     H --> J["เลือกวิธีชำระเงิน"]
     I --> J
     J --> K{"วิธีชำระ?"}
-    K -- "โอนเงิน" --> L["แสดง QR PromptPay\n+ Banner เตือน Screenshot สลิป"]
-    K -- "เงินสด" --> M["พนักงานรับเงิน\nPaymentMethodId=1"]
-    L --> L2["ลูกค้าโอนเงิน\nแล้วอัปโหลดสลิปเอง\npayments.SlipUrl"]
-    L2 --> N["POS แจ้งเตือนพนักงาน\nมีสลิปรอ Verify (SignalR)"]
+    K -- "โอนเงิน" --> L["แสดง QR PromptPay<br/>+ แจ้งเตือนให้ Screenshot สลิป"]
+    K -- "เงินสด" --> M["พนักงานรับเงิน<br/>PaymentMethodId=1"]
+    L --> L2["ลูกค้าโอนเงิน<br/>แล้วอัปโหลดสลิปเอง<br/>payments.SlipUrl"]
+    L2 --> N["POS แจ้งเตือนพนักงาน<br/>มีสลิปรอ Verify SignalR"]
     N --> O{"สลิปถูกต้อง?"}
-    O -- "ไม่" --> P["Reject\nPaymentStatusId=3\nแจ้งลูกค้าอัปโหลดใหม่"]
+    O -- "ไม่" --> P["Reject<br/>PaymentStatusId=3<br/>แจ้งลูกค้าอัปโหลดใหม่"]
     P --> L
-    O -- "ใช่" --> Q["Approve\nPaymentStatusId=2"]
+    O -- "ใช่" --> Q["Approve<br/>PaymentStatusId=2"]
     M --> Q
-    Q --> R["OrderStatusId=2 (Paid)\nGenerate QueueNumber\nตัดสต็อกจาก recipes\nคำนวณ Points + Stamps"]
-    R --> S["KDS แสดงออเดอร์\nOrderStatusId=3 (Preparing)"]
-    S --> T["บาริสต้าชง + กด Done\nOrderItemStatusId=3"]
-    T --> U["OrderStatusId=4 (Ready)\nขึ้นจอ Public Screen"]
-    U --> V["ลูกค้ารับสินค้า\nพนักงานกด Served"]
-    V --> W(["End: OrderStatusId=5\nCompleted"])
+    Q --> R["OrderStatusId=2 Paid<br/>Generate QueueNumber<br/>ตัดสต็อกจาก recipes<br/>คำนวณ Points + Stamps"]
+    R --> S["KDS แสดงออเดอร์<br/>OrderStatusId=3 Preparing"]
+    S --> T["บาริสต้าชง + กด Done<br/>OrderItemStatusId=3"]
+    T --> U["OrderStatusId=4 Ready<br/>ขึ้นจอ Public Screen"]
+    U --> V["ลูกค้ารับสินค้า<br/>พนักงานกด Served"]
+    V --> W(["สิ้นสุด: OrderStatusId=5<br/>Completed"])
 ```
 
 ---
@@ -1049,15 +1049,17 @@ flowchart LR
 
 Context Diagram แสดงขอบเขต (Boundary) ของระบบทั้งหมด โดยมองระบบเป็น Process กลางตัวเดียว แล้วแสดง External Entity ทั้งหมดที่ส่งข้อมูลเข้า-ออก ได้แก่ Customer, Staff, Manager/Owner, Finance, และ Bank/Payment Gateway ช่วยให้เห็นว่าข้อมูลอะไรไหลเข้า-ออกระบบจากภายนอก
 
-```mermaid
-flowchart LR
-    CUST(["Customer\n(Guest / Member)"])
-    STAFF(["Staff\n(Barista / Cashier)"])
-    MGR(["Manager / Owner"])
-    FIN(["Finance"])
-    BANK(["Bank /\nPayment Gateway"])
+> **Notation:** Gane & Sarson — External Entity = สี่เหลี่ยม, Process = สี่เหลี่ยมมุมมน (Mermaid ใช้ Subroutine shape `[[...]]` จำลอง), Data Store = Open rectangle (Mermaid ใช้ Cylinder `[(...)]` จำลอง)
 
-    SYS[["Smart Cafe\nManagement System"]]
+```mermaid
+flowchart TD
+    CUST["Customer<br/>Guest / Member"]
+    STAFF["Staff<br/>Barista / Cashier"]
+    MGR["Manager / Owner"]
+    FIN["Finance"]
+    BANK["Bank /<br/>Payment Gateway"]
+
+    SYS[["0. Smart Cafe<br/>Management System"]]
 
     CUST -- "QR Scan, เลือกเมนู, สั่งซื้อ, อัปโหลดสลิป" --> SYS
     SYS -- "สถานะออเดอร์, หมายเลขคิว, Rewards Catalog" --> CUST
@@ -1071,7 +1073,7 @@ flowchart LR
     FIN -- "Verify ยอด, ตรวจสอบสลิป" --> SYS
     SYS -- "รายงาน P&L, รายการ payments รายวัน" --> FIN
 
-    BANK -- "Webhook ยืนยันการโอน (Dynamic QR)" --> SYS
+    BANK -- "Webhook ยืนยันการโอน Dynamic QR" --> SYS
     SYS -- "ข้อมูลยอดชำระ" --> BANK
 ```
 
@@ -1081,27 +1083,29 @@ flowchart LR
 
 DFD Level 1 แตก Process กลางออกเป็น 6 Sub-process ที่ทำงานร่วมกัน แต่ละ Process เชื่อมต่อกับ Data Store ที่เกี่ยวข้องในฐานข้อมูล `csi402db` และรับ/ส่งข้อมูลกับ External Entity ที่แตกต่างกัน
 
+> **Notation:** Gane & Sarson — ใช้ notation เดียวกับ Context Diagram: External Entity = สี่เหลี่ยม, Process = Subroutine `[[...]]` (เลขกำกับ X.0), Data Store = Cylinder `[(...)]`
+
 ```mermaid
-flowchart LR
-    CUST(["Customer"])
-    STAFF(["Staff"])
-    MGR(["Manager / Owner"])
-    FIN(["Finance"])
-    BANK(["Bank"])
+flowchart TD
+    CUST["Customer"]
+    STAFF["Staff"]
+    MGR["Manager / Owner"]
+    FIN["Finance"]
+    BANK["Bank"]
 
-    P1["1. Order\nManagement"]
-    P2["2. Payment\nProcessing"]
-    P3["3. Inventory\nManagement"]
-    P4["4. Member\nand Loyalty"]
-    P5["5. Finance\nand Reporting"]
-    P6["6. Menu and\nPromotion Mgmt"]
+    P1[["1.0 Order<br/>Management"]]
+    P2[["2.0 Payment<br/>Processing"]]
+    P3[["3.0 Inventory<br/>Management"]]
+    P4[["4.0 Member<br/>and Loyalty"]]
+    P5[["5.0 Finance<br/>and Reporting"]]
+    P6[["6.0 Menu and<br/>Promotion Mgmt"]]
 
-    DS1[("orders\norderitems\norderitemoptions")]
-    DS2[("payments")]
-    DS3[("ingredients\nrecipes\ninventorylogs")]
-    DS4[("members\npointtransactions")]
-    DS5[("rewards\npromotions")]
-    DS6[("menuitems\ntables")]
+    DS1[("D1: orders<br/>orderitems<br/>orderitemoptions")]
+    DS2[("D2: payments")]
+    DS3[("D3: ingredients<br/>recipes<br/>inventorylogs")]
+    DS4[("D4: members<br/>pointtransactions")]
+    DS5[("D5: rewards<br/>promotions")]
+    DS6[("D6: menuitems<br/>tables")]
 
     CUST -- "สั่งซื้อ, ข้อมูลโต๊ะ" --> P1
     P1 -- "สถานะออเดอร์, คิว" --> CUST
@@ -1146,11 +1150,11 @@ Sequence Diagram แสดงการไหลของ HTTP Request ระห�
 
 ```mermaid
 sequenceDiagram
-    participant C as Customer (PWA)
-    participant POS as Staff (POS / Admin)
-    participant CTRL as ASP.NET Core Controller
-    participant DB as MySQL (csi402db)
-    participant HUB as CafeHub (/hubs/cafe)
+    participant C as "Customer PWA"
+    participant POS as "Staff POS / Admin"
+    participant CTRL as "ASP.NET Core Controller"
+    participant DB as "MySQL csi402db"
+    participant HUB as "CafeHub /hubs/cafe"
 
     Note over C,DB: Flow: ดูเมนูและสั่งอาหาร
     C->>HUB: SignalR JoinGroup("order-{orderId}")
@@ -1397,13 +1401,13 @@ stateDiagram-v2
     state "5 Completed" as S5
     state "6 Cancelled" as S6
 
-    [*] --> S1 : PlaceOrder (Reserve 15 นาที)
-    S1 --> S2 : ApprovePayment / ApprovePaymentAtPos
-    S1 --> S1 : RejectPayment (ลูกค้าอัปโหลดสลิปใหม่)
-    S1 --> S6 : CancelOrder / ReservedUntil หมดอายุ
-    S2 --> S3 : MarkOrderPreparing (auto หลัง Paid)
-    S3 --> S4 : ทุก OrderItem เป็น Done (OrderItemStatusId=3)
-    S4 --> S5 : MarkOrderCompleted (พนักงานกด Served)
+    [*] --> S1 : PlaceOrder - Reserve 15 นาที
+    S1 --> S2 : ApprovePayment หรือ ApprovePaymentAtPos
+    S1 --> S1 : RejectPayment - ลูกค้าอัปโหลดสลิปใหม่
+    S1 --> S6 : CancelOrder หรือ ReservedUntil หมดอายุ
+    S2 --> S3 : MarkOrderPreparing - auto หลัง Paid
+    S3 --> S4 : ทุก OrderItem เป็น Done - OrderItemStatusId=3
+    S4 --> S5 : MarkOrderCompleted - พนักงานกด Served
     S5 --> [*]
     S6 --> [*]
 ```
@@ -1412,17 +1416,17 @@ stateDiagram-v2
 
 ### 9.7 Use Case Diagram
 
-แสดง Actor ทั้งเจ็ดบทบาทและ Use Case หลักภายใน System Boundary ช่วยให้เห็นภาพขอบเขตสิทธิ์ของแต่ละ Role ก่อนลงรายละเอียดในตาราง Permission Matrix (หัวข้อ 2) เนื่องจาก Mermaid ไม่รองรับ Use Case Diagram โดยตรง ผมใช้ flowchart เลียนแบบ โดยใช้ node วงกลมแทน Actor และ node Stadium แทน Use Case
+แสดง Actor ทั้งเจ็ดบทบาทและ Use Case หลักภายใน System Boundary ช่วยให้เห็นภาพขอบเขตสิทธิ์ของแต่ละ Role ก่อนลงรายละเอียดในตาราง Permission Matrix (หัวข้อ 2) เนื่องจาก Mermaid ไม่รองรับ Use Case Diagram โดยตรง ผมจำลองด้วย `flowchart LR` โดยใช้ Rectangle แทน Actor (stick figure) และ Stadium `(["..."])` แทน Use Case (วงรี) เพื่อให้แยกแยะสองสัญลักษณ์ได้ชัด
 
 ```mermaid
 flowchart LR
-    G(("Guest"))
-    M(("Member"))
-    B(("Barista"))
-    C(("Cashier"))
-    SM(("Store Manager"))
-    F(("Finance"))
-    O(("Owner"))
+    G["Guest"]
+    M["Member"]
+    B["Barista"]
+    C["Cashier"]
+    SM["Store Manager"]
+    F["Finance"]
+    O["Owner"]
 
     subgraph SYS["Smart Cafe Management System"]
         UC1(["สแกน QR และสั่งอาหาร"])
