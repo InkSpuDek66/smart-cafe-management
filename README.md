@@ -126,6 +126,7 @@ dotnet run
 | Cashier | 690002 | cashier1 | admin123 |
 | Barista | 690003 | barista1 | admin123 |
 | Store Manager | 690004 | manager1 | admin123 |
+| Finance | 690005 | finance1 | admin123 |
 
 > หน้า Login (`/Account/Login`) รับทั้ง StaffId (ตัวเลขล้วน) หรือ Username ก็ได้ Password เก็บเป็น SHA-256 hash ใน `Staff.PasswordHash`
 > ข้อมูลนี้มาจาก `SQLSeedDemo.sql` (บรรทัด 29-33) — Seed Demo ปัจจุบันยังไม่มีผู้ใช้ Role Finance หากต้องการทดสอบให้สร้างเพิ่มผ่าน `/Account/AddStaff`
