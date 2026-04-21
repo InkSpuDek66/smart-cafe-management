@@ -1,10 +1,10 @@
 // Hubs/CafeHub.cs
 // SignalR Hub สำหรับส่งข้อความ Real-time ระหว่าง Server กับ Client
-// 4 Events: NotifyNewSlip, NotifyOrderPaid, NotifySlipRejected, NotifyOrderReady
+// 5 Events: NotifyNewSlip, NotifyOrderPaid, NotifySlipRejected, NotifyOrderReady, NotifyOrderCancelled(Order ถูกยกเลิก)
 
-using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR; // ใช้สำหรับสร้าง Hub ที่ Client สามารถเชื่อมต่อและรับส่งข้อความแบบ Real-time
 
-namespace Project_CSI402_T2_Y3.Hubs;
+namespace Project_CSI402_T2_Y3.Hubs; // Hub นี้จะถูกใช้เพื่อส่งการแจ้งเตือนต่างๆ เช่น เมื่อมี Slip ใหม่, Order ถูกจ่ายเงิน, Slip ถูกปฏิเสธ, หรือ Order พร้อมเสิร์ฟ
 
 public class CafeHub : Hub
 {

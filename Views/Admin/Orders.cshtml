@@ -1,4 +1,15 @@
 @* Views/Admin/Orders.cshtml *@
+@* ------------------------------------------------
+- หน้าแสดงรายการออเดอร์ทั้งหมด (สำหรับ Admin)
+- แสดงข้อมูล: รหัสออเดอร์, โต๊ะ, ลูกค้า, จำนวนรายการ, ยอดสุทธิ, คิว, สถานะ, เวลา
+- ปุ่มดำเนินการ: เปลี่ยนสถานะออเดอร์ (ขึ้นอยู่กับสถานะปัจจุบัน)
+- ฟีเจอร์กรองออเดอร์ตามสถานะ (รอชำระ, ชำระแล้ว, กำลังทำ, พร้อมเสิร์ฟ, เสร็จสิ้น, ยกเลิก)
+- URL เข้าถึง: /Admin/Orders
+- Method: GET (แสดงรายการออเดอร์), POST (อัปเดตสถานะออเดอร์)
+- ViewModel: AdminOrderViewModel (มี properties: List<OrderViewModel> Orders, string? FilterStatus)
+- Controller Action: AdminController.Orders (GET), AdminController.UpdateOrderStatus (POST)
+------------------------------------------------ *@
+
 @model Project_CSI402_T2_Y3.ViewModels.AdminOrderViewModel
 @{
     ViewData["Title"] = "รายการออเดอร์";

@@ -151,6 +151,7 @@ public class CustomerController : Controller
             .ToList();
 
         var tableDict  = _db.Tables.ToDictionary(t => t.TableId, t => t.TableNumber ?? "?");
+        // สร้าง Dictionary สำหรับแปลง OrderStatusId → StatusName เช่น { 1: "Paid", 2: "Preparing", ... }
         var statusDict = _db.Orderstatuses.ToDictionary(s => s.OrderStatusId, s => s.StatusName ?? "?");
 
         var queueRows = orders.Select(o => new

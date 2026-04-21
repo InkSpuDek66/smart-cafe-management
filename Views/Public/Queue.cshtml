@@ -1,6 +1,6 @@
 @{
     ViewData["Title"] = "Public Screen";
-    Layout = null; // หน้าจอ TV ไม่ใช้ Layout ทั่วไป
+    Layout = null; // ไม่ใช้ Layout ใดๆ เพื่อให้แสดงผลเต็มหน้าจอ
     var readyOrders     = ViewBag.ReadyOrders     as IEnumerable<dynamic>;
     var recentCompleted = ViewBag.RecentCompleted as IEnumerable<dynamic>;
 }
@@ -9,7 +9,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Smart Cafe — Public Screen</title>
+    <title>Public Screen — Smart Cafe</title>
     <link rel="icon" href="/coffee-removebg-preview.ico" type="image/x-icon" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800&family=Noto+Sans+Thai:wght@400;700&display=swap"
           rel="stylesheet" />

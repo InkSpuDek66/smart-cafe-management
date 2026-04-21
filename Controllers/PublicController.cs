@@ -18,7 +18,7 @@ public class PublicController : Controller
 
     // ============================================================
     // GET /Public/Queue
-    // แสดงออเดอร์ที่พร้อมเสิร์ฟ (StatusId=4) และออเดอร์ล่าสุดที่เสร็จ (StatusId=5)
+    // แสดงออเดอร์ตั้งแต่ Paid (2) เป็นต้นไป: Paid=2, Preparing=3, Ready=4
     // Auto-refresh ทุก 10 วินาที และรับ SignalR event
     // ============================================================
     public IActionResult Queue()
